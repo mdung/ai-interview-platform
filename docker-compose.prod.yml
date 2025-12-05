@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: ai-interview-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ai_interview
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-interview-network
+
+  ai-service:
+    build: ./ai-service
+    container_name: ai-interview-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BACKEND_URL=http://backend:8080
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BACKEND_API_KEY=${BACKEND_API_KEY:-}
+    depends_on:
+      - redis
+      - backend
+    networks:
+      - ai-interview-network
+
+  frontend:
+    build: ./frontend
+    container_name: ai-interview-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ai-interview-network
+
+  postgres:
+    image: postgres:14-alpine
+    container_name: ai-interview-postgres
+    environment:
+      POSTGRES_DB: ai_interview
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-interview-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-interview-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ai-interview-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ai-interview-network:
+    driver: bridge
+
