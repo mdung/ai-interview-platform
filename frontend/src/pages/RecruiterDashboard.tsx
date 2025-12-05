@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { InterviewSession } from '../types'
 import { interviewApi } from '../services/api'
 import './RecruiterDashboard.css'
 
 const RecruiterDashboard = () => {
+  const navigate = useNavigate()
   const [sessions, setSessions] = useState<InterviewSession[]>([])
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null)
   const [loading, setLoading] = useState(true)
@@ -26,6 +28,17 @@ const RecruiterDashboard = () => {
     <div className="recruiter-dashboard">
       <div className="dashboard-header">
         <h1>Recruiter Dashboard</h1>
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => navigate('/profile')}>
+            Profile
+          </button>
+          <button className="btn btn-secondary" onClick={() => {
+            localStorage.removeItem('token')
+            navigate('/')
+          }}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-content">

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { authApi } from '../services/api'
 import './Login.css'
 
@@ -60,6 +60,16 @@ const Login = () => {
           <button type="submit" className="btn btn-primary">
             Login
           </button>
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
+            <Link to="/forgot-password" style={{ color: '#007bff', textDecoration: 'none', fontSize: '14px' }}>
+              Forgot Password?
+            </Link>
+          </div>
+          <div style={{ marginTop: '12px', textAlign: 'center' }}>
+            <Link to="/register" style={{ color: '#007bff', textDecoration: 'none' }}>
+              Don't have an account? Register
+            </Link>
+          </div>
         </form>
       </div>
     </div>

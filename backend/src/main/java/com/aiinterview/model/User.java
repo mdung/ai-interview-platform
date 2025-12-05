@@ -43,6 +43,11 @@ public class User {
     @Column(nullable = false)
     private Boolean active = true;
     
+    @Column(length = 500)
+    private String resetToken;
+    
+    private LocalDateTime resetTokenExpiry;
+    
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

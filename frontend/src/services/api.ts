@@ -34,6 +34,47 @@ export const interviewApi = {
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }),
+  
+  register: (data: {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    role?: string
+  }) => api.post('/auth/register', data),
+  
+  forgotPassword: (email: string) =>
+    api.post('/auth/forgot-password', { email }),
+  
+  resetPassword: (token: string, newPassword: string) =>
+    api.post('/auth/reset-password', { token, newPassword }),
+  
+  refreshToken: (token: string) =>
+    api.post('/auth/refresh-token', { token }),
+  
+  getCurrentUser: () => api.get('/auth/me'),
+  
+  updateProfile: (data: {
+    firstName: string
+    lastName: string
+    email: string
+  }) => api.put('/auth/profile', data),
+  
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put('/auth/change-password', { currentPassword, newPassword }),
+}
+
+export const adminApi = {
+  getAllUsers: () => api.get('/admin/users'),
+  getUserById: (id: number) => api.get(`/admin/users/${id}`),
+  updateUser: (id: number, data: {
+    firstName: string
+    lastName: string
+    email: string
+  }) => api.put(`/admin/users/${id}`, data),
+  activateUser: (id: number) => api.put(`/admin/users/${id}/activate`),
+  deactivateUser: (id: number) => api.put(`/admin/users/${id}/deactivate`),
+  deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
 }
 
 export default api
