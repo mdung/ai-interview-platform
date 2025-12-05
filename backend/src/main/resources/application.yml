@@ -73,3 +73,6 @@ management:
       prometheus:
         enabled: true
 
+file:
+  upload-dir: uploads
+
