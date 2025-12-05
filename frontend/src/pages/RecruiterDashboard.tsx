@@ -29,6 +29,9 @@ const RecruiterDashboard = () => {
       <div className="dashboard-header">
         <h1>Recruiter Dashboard</h1>
         <div className="header-actions">
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions')}>
+            View All Sessions
+          </button>
           <button className="btn btn-secondary" onClick={() => navigate('/profile')}>
             Profile
           </button>

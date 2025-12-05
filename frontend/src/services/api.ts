@@ -22,6 +22,18 @@ export const interviewApi = {
   getSession: (sessionId: string) => 
     api.get(`/interviews/sessions/${sessionId}`),
   
+  getAllSessions: (params?: {
+    status?: string
+    candidateId?: number
+    templateId?: number
+    startDate?: string
+    endDate?: string
+    page?: number
+    size?: number
+    sortBy?: string
+    sortDir?: string
+  }) => api.get('/interviews/sessions', { params }),
+  
   joinInterview: (sessionId: string) =>
     api.get(`/candidates/join/${sessionId}`),
   
@@ -29,6 +41,46 @@ export const interviewApi = {
     api.put(`/interviews/sessions/${sessionId}/status`, null, {
       params: { status },
     }),
+  
+  pauseSession: (sessionId: string) =>
+    api.post(`/interviews/sessions/${sessionId}/pause`),
+  
+  resumeSession: (sessionId: string) =>
+    api.post(`/interviews/sessions/${sessionId}/resume`),
+  
+  getTurns: (sessionId: string) =>
+    api.get(`/interviews/sessions/${sessionId}/turns`),
+  
+  getTranscript: (sessionId: string) =>
+    api.get(`/interviews/sessions/${sessionId}/transcript`),
+  
+  updateEvaluation: (sessionId: string, data: {
+    aiSummary: string
+    strengths?: string
+    weaknesses?: string
+    recommendation?: string
+    communicationScore?: number
+    technicalScore?: number
+    clarityScore?: number
+  }) => api.put(`/interviews/sessions/${sessionId}/evaluation`, data),
+  
+  exportPdf: (sessionId: string) =>
+    api.get(`/interviews/sessions/${sessionId}/export/pdf`, {
+      responseType: 'blob',
+    }),
+  
+  exportCsv: (sessionId: string) =>
+    api.get(`/interviews/sessions/${sessionId}/export/csv`, {
+      responseType: 'blob',
+    }),
+  
+  uploadAudio: (sessionId: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post(`/interviews/sessions/${sessionId}/audio`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 export const authApi = {

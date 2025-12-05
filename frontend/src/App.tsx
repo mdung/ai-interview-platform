@@ -7,6 +7,8 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
 import AdminUsers from './pages/AdminUsers'
+import SessionList from './pages/SessionList'
+import TranscriptView from './pages/TranscriptView'
 import './App.css'
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/interview/:sessionId" element={<CandidateInterview />} />
         <Route path="/recruiter" element={<RecruiterDashboard />} />
+        <Route path="/recruiter/sessions" element={<SessionList />} />
+        <Route path="/recruiter/sessions/:sessionId/transcript" element={<TranscriptView />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Routes>
     </Router>

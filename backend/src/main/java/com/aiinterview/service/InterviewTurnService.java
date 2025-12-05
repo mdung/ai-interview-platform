@@ -1,5 +1,6 @@
 package com.aiinterview.service;
 
+import com.aiinterview.dto.InterviewTurnResponse;
 import com.aiinterview.model.InterviewSession;
 import com.aiinterview.model.InterviewTurn;
 import com.aiinterview.repository.InterviewSessionRepository;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,37 @@ public class InterviewTurnService {
     
     public List<InterviewTurn> getTurnsBySessionId(Long sessionId) {
         return turnRepository.findBySession_IdOrderByTurnNumberAsc(sessionId);
+    }
+    
+    public List<InterviewTurnResponse> getTurnsBySessionIdAsResponse(Long sessionId) {
+        return turnRepository.findBySession_IdOrderByTurnNumberAsc(sessionId).stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+    }
+    
+    public List<InterviewTurnResponse> getTurnsBySessionIdString(String sessionId) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        return getTurnsBySessionIdAsResponse(session.getId());
+    }
+    
+    private InterviewTurnResponse mapToResponse(InterviewTurn turn) {
+        return InterviewTurnResponse.builder()
+            .id(turn.getId())
+            .turnNumber(turn.getTurnNumber())
+            .question(turn.getQuestion())
+            .answer(turn.getAnswer())
+            .questionTimestamp(turn.getQuestionTimestamp())
+            .answerTimestamp(turn.getAnswerTimestamp())
+            .answerDurationMs(turn.getAnswerDurationMs())
+            .audioUrl(turn.getAudioUrl())
+            .aiComment(turn.getAiComment())
+            .communicationScore(turn.getCommunicationScore())
+            .technicalScore(turn.getTechnicalScore())
+            .clarityScore(turn.getClarityScore())
+            .hasAntiCheatSignal(turn.getHasAntiCheatSignal())
+            .antiCheatDetails(turn.getAntiCheatDetails())
+            .build();
     }
     
     @Transactional

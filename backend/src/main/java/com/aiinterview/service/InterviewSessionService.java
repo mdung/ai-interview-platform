@@ -1,7 +1,6 @@
 package com.aiinterview.service;
 
-import com.aiinterview.dto.CreateInterviewSessionRequest;
-import com.aiinterview.dto.InterviewSessionResponse;
+import com.aiinterview.dto.*;
 import com.aiinterview.model.Candidate;
 import com.aiinterview.model.InterviewSession;
 import com.aiinterview.model.InterviewTemplate;
@@ -9,14 +8,20 @@ import com.aiinterview.repository.CandidateRepository;
 import com.aiinterview.repository.InterviewSessionRepository;
 import com.aiinterview.repository.InterviewTemplateRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -75,6 +80,82 @@ public class InterviewSessionService {
         if (status == InterviewSession.SessionStatus.COMPLETED) {
             session.setCompletedAt(LocalDateTime.now());
         }
+        
+        session = sessionRepository.save(session);
+        return mapToResponse(session);
+    }
+    
+    public SessionListResponse getAllSessions(
+            InterviewSession.SessionStatus status,
+            Long candidateId,
+            Long templateId,
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            int page,
+            int size,
+            String sortBy,
+            String sortDir) {
+        
+        Sort sort = sortDir.equalsIgnoreCase("desc") 
+            ? Sort.by(sortBy).descending() 
+            : Sort.by(sortBy).ascending();
+        
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
+        Page<InterviewSession> sessionPage = sessionRepository.findWithFilters(
+            status, candidateId, templateId, startDate, endDate, pageable
+        );
+        
+        List<InterviewSessionResponse> sessions = sessionPage.getContent().stream()
+            .map(this::mapToResponse)
+            .collect(Collectors.toList());
+        
+        return SessionListResponse.builder()
+            .sessions(sessions)
+            .totalElements(sessionPage.getTotalElements())
+            .totalPages(sessionPage.getTotalPages())
+            .currentPage(page)
+            .pageSize(size)
+            .build();
+    }
+    
+    @Transactional
+    public InterviewSessionResponse pauseSession(String sessionId) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        if (session.getStatus() != InterviewSession.SessionStatus.IN_PROGRESS) {
+            throw new RuntimeException("Only IN_PROGRESS sessions can be paused");
+        }
+        
+        session.setStatus(InterviewSession.SessionStatus.PAUSED);
+        session = sessionRepository.save(session);
+        return mapToResponse(session);
+    }
+    
+    @Transactional
+    public InterviewSessionResponse resumeSession(String sessionId) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        if (session.getStatus() != InterviewSession.SessionStatus.PAUSED) {
+            throw new RuntimeException("Only PAUSED sessions can be resumed");
+        }
+        
+        session.setStatus(InterviewSession.SessionStatus.IN_PROGRESS);
+        session = sessionRepository.save(session);
+        return mapToResponse(session);
+    }
+    
+    @Transactional
+    public InterviewSessionResponse updateEvaluation(String sessionId, UpdateEvaluationRequest request) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        session.setAiSummary(request.getAiSummary());
+        session.setStrengths(request.getStrengths());
+        session.setWeaknesses(request.getWeaknesses());
+        session.setRecommendation(request.getRecommendation());
         
         session = sessionRepository.save(session);
         return mapToResponse(session);
