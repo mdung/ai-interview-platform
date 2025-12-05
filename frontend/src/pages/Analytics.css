@@ -1,0 +1,152 @@
+.analytics-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20px;
+}
+
+.analytics-header {
+  max-width: 1400px;
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.analytics-header h1 {
+  margin: 0;
+}
+
+.analytics-tabs {
+  max-width: 1400px;
+  margin: 0 auto 20px;
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: #007bff;
+}
+
+.tab.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  font-weight: 500;
+}
+
+.analytics-content {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.analytics-panel {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-card {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.stat-card h3 {
+  margin: 0 0 12px 0;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stat-value {
+  margin: 0;
+  font-size: 32px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.trends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trend-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.trend-date {
+  font-weight: 500;
+}
+
+.trend-value {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.trend-change {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.trend-change.positive {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.trend-change.negative {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 18px;
+}
+

@@ -30,10 +30,22 @@ const RecruiterDashboard = () => {
         <h1>Recruiter Dashboard</h1>
         <div className="header-actions">
           <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions')}>
-            View All Sessions
+            Sessions
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/profile')}>
-            Profile
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/jobs')}>
+            Jobs
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/templates')}>
+            Templates
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/candidates')}>
+            Candidates
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/analytics')}>
+            Analytics
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
+            Settings
           </button>
           <button className="btn btn-secondary" onClick={() => {
             localStorage.removeItem('token')

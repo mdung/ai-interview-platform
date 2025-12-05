@@ -1,0 +1,143 @@
+.settings-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20px;
+}
+
+.settings-header {
+  max-width: 1200px;
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-header h1 {
+  margin: 0;
+}
+
+.settings-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 20px;
+}
+
+.settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tab {
+  padding: 12px;
+  border: none;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tab:hover {
+  background-color: #f0f0f0;
+}
+
+.tab.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.badge {
+  background-color: #dc3545;
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.settings-panel {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.settings-panel h2 {
+  margin-top: 0;
+}
+
+.notifications-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #ddd;
+}
+
+.notification-item.unread {
+  background-color: #e3f2fd;
+  border-left-color: #007bff;
+}
+
+.notification-item.read {
+  background-color: #f9f9f9;
+}
+
+.notification-content h4 {
+  margin: 0 0 8px 0;
+}
+
+.notification-content p {
+  margin: 0 0 8px 0;
+  color: #666;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.preferences-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.preferences-form .form-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preferences-form label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
