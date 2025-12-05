@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Interview Completed</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Interview Completed</h2>
+        <p>Dear <span th:text="${candidateName}">Candidate</span>,</p>
+        <p>Thank you for completing your interview for <strong th:text="${jobTitle}">Job Title</strong>.</p>
+        <p><strong>Completed at:</strong> <span th:text="${completedAt}">Date</span></p>
+        <p>We will review your interview and get back to you soon.</p>
+        <p>Best regards,<br>AI Interview Platform</p>
+    </div>
+</body>
+</html>
+

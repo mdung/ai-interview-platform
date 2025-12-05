@@ -19,6 +19,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final EmailService emailService;
     
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
@@ -75,8 +76,13 @@ public class AuthService {
         
         userRepository.save(user);
         
-        // In production, send email with reset link
-        // emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
+        // Send email with reset link
+        try {
+            emailService.sendPasswordResetEmail(user.getEmail(), resetToken);
+        } catch (Exception e) {
+            // Log error but don't fail the request
+            System.err.println("Failed to send password reset email: " + e.getMessage());
+        }
     }
     
     @Transactional

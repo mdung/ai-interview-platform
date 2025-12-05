@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Interview Reminder</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Interview Reminder</h2>
+        <p>Dear <span th:text="${candidateName}">Candidate</span>,</p>
+        <p>This is a reminder that you have an interview scheduled for <strong th:text="${jobTitle}">Job Title</strong>.</p>
+        <p><strong>Interview Time:</strong> <span th:text="${startedAt}">Date</span></p>
+        <p>Please click the link below to join your interview:</p>
+        <p><a th:href="${interviewLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; display: inline-block;">Join Interview</a></p>
+        <p>Best regards,<br>AI Interview Platform</p>
+    </div>
+</body>
+</html>
+
