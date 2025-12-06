@@ -445,3 +445,4 @@ For issues or questions:
 3. Ensure database and Redis are running
 4. Check configuration in `application.yml`
 
+

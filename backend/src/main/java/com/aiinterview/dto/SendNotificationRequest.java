@@ -18,3 +18,4 @@ public class SendNotificationRequest {
     private Long userId; // Optional: if null, sends to all users
 }
 
+

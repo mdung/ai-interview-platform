@@ -24,3 +24,4 @@ public class ATSIntegrationRequest {
     private String configuration; // JSON string for provider-specific config
 }
 
+

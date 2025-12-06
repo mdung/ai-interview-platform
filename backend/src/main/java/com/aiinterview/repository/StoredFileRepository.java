@@ -11,3 +11,4 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, Long> {
     Optional<StoredFile> findByFilePath(String filePath);
 }
 
+

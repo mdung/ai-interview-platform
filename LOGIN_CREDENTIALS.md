@@ -143,3 +143,4 @@ Invoke-RestMethod -Uri "http://localhost:8080/api/auth/reset-password" `
 
 That's it! You're logged in as admin. 🎉
 
+

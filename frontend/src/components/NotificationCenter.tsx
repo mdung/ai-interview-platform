@@ -181,3 +181,4 @@ const NotificationCenter = ({ isOpen, onClose, maxNotifications = 50 }: Notifica
 
 export default NotificationCenter
 
+

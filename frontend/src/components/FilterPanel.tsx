@@ -107,3 +107,4 @@ const FilterPanel = ({ filters, onFilterChange, className = '' }: FilterPanelPro
 
 export default FilterPanel
 
+

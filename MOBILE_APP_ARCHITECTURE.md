@@ -248,3 +248,4 @@ npm run ios
 
 The mobile app will extend the web platform's functionality to mobile devices, providing a seamless interview experience for candidates and recruiters on the go.
 
+

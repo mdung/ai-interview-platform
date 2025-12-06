@@ -24,3 +24,4 @@ public class TemplateUsageResponse {
     private Long uniqueCandidates;
 }
 
+

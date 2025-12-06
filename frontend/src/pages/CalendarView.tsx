@@ -74,6 +74,16 @@ const CalendarView = () => {
     return eventsMap.get(dateKey)?.length || 0
   }
 
+  const getEventCountMap = (): Map<string, number> => {
+    const countMap = new Map<string, number>()
+    sessions.forEach((session) => {
+      const date = new Date(session.startedAt)
+      const dateKey = date.toISOString().split('T')[0]
+      countMap.set(dateKey, (countMap.get(dateKey) || 0) + 1)
+    })
+    return countMap
+  }
+
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date)
     const dateSessions = getSessionsForDate(date)
@@ -94,31 +104,39 @@ const CalendarView = () => {
 
   return (
     <PageLayout
-      title="Interview Calendar"
+      title="📅 Interview Calendar"
       actions={
-        <div className="view-mode-selector">
+        <>
+          <div className="view-mode-selector">
+            <button
+              className={`view-mode-btn ${viewMode === 'month' ? 'active' : ''}`}
+              onClick={() => setViewMode('month')}
+            >
+              Month
+            </button>
+            <button
+              className={`view-mode-btn ${viewMode === 'week' ? 'active' : ''}`}
+              onClick={() => setViewMode('week')}
+            >
+              Week
+            </button>
+            <button
+              className={`view-mode-btn ${viewMode === 'day' ? 'active' : ''}`}
+              onClick={() => setViewMode('day')}
+            >
+              Day
+            </button>
+          </div>
           <button
-            className={`btn btn-small ${viewMode === 'month' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('month')}
+            className="btn btn-primary"
+            onClick={() => navigate('/recruiter/sessions/new')}
           >
-            Month
+            + New Interview
           </button>
-          <button
-            className={`btn btn-small ${viewMode === 'week' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('week')}
-          >
-            Week
-          </button>
-          <button
-            className={`btn btn-small ${viewMode === 'day' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setViewMode('day')}
-          >
-            Day
-          </button>
-        </div>
+        </>
       }
     >
-    <div className="calendar-view-container">
+      <div className="calendar-view-container">
 
       {error && <ErrorDisplay error={error} />}
 
@@ -129,6 +147,8 @@ const CalendarView = () => {
               selectedDate={selectedDate || undefined}
               onDateSelect={handleDateSelect}
               minDate={new Date(2020, 0, 1)}
+              viewMode={viewMode}
+              events={getEventCountMap()}
             />
           </div>
           <div className="calendar-legend">

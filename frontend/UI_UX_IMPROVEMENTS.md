@@ -333,3 +333,4 @@ All providers are integrated in `App.tsx`:
 - [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
 - [React Accessibility](https://react.dev/learn/accessibility)
 
+
