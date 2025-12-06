@@ -10,7 +10,8 @@ import {
   Filter,
   LoadingSpinner,
   ErrorDisplay,
-  useToast
+  useToast,
+  PageLayout
 } from '../components'
 import './AdvancedAnalytics.css'
 
@@ -163,18 +164,20 @@ const AdvancedAnalytics = () => {
   }
 
   return (
-    <div className="advanced-analytics-container">
-      <div className="advanced-analytics-header">
-        <h1>Advanced Analytics</h1>
-        <div className="header-actions">
+    <PageLayout
+      title="Advanced Analytics"
+      actions={
+        <>
           <button className="btn btn-secondary" onClick={() => navigate('/recruiter/analytics')}>
             Basic Analytics
           </button>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
             Back
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="advanced-analytics-container">
 
       {error && <ErrorDisplay error={error} />}
 
@@ -349,7 +352,8 @@ const AdvancedAnalytics = () => {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 

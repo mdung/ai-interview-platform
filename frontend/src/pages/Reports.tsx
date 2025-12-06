@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyticsApi } from '../services/api'
-import { useToast } from '../components'
+import { useToast, PageLayout } from '../components'
 import './Reports.css'
 
 const Reports = () => {
@@ -49,13 +49,15 @@ const Reports = () => {
   }
 
   return (
-    <div className="reports-container">
-      <div className="reports-header">
-        <h1>Reports & Exports</h1>
+    <PageLayout
+      title="Reports & Exports"
+      actions={
         <button className="btn btn-secondary" onClick={() => navigate(-1)}>
           Back
         </button>
-      </div>
+      }
+    >
+      <div className="reports-container">
 
       <div className="reports-content">
         <div className="reports-section">
@@ -157,7 +159,8 @@ const Reports = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 

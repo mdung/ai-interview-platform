@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyticsApi, jobApi } from '../services/api'
-import { LoadingSpinner, ErrorDisplay } from '../components'
+import { LoadingSpinner, ErrorDisplay, PageLayout } from '../components'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import './JobAnalytics.css'
 
@@ -35,20 +35,20 @@ const JobAnalytics = () => {
 
   if (loading) {
     return (
-      <div className="job-analytics-container">
+      <PageLayout title="Job Analytics">
         <LoadingSpinner message="Loading job analytics..." />
-      </div>
+      </PageLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="job-analytics-container">
+      <PageLayout title="Job Analytics">
         <ErrorDisplay error={error} />
         <button className="btn btn-secondary" onClick={() => navigate(-1)}>
           Back
         </button>
-      </div>
+      </PageLayout>
     )
   }
 
@@ -61,15 +61,15 @@ const JobAnalytics = () => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']
 
   return (
-    <div className="job-analytics-container">
-      <div className="analytics-header">
-        <h1>Job Analytics</h1>
-        <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Back
-          </button>
-        </div>
-      </div>
+    <PageLayout
+      title="Job Analytics"
+      actions={
+        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+          Back
+        </button>
+      }
+    >
+      <div className="job-analytics-container">
 
       <div className="analytics-stats">
         <div className="stat-card">
@@ -226,7 +226,8 @@ const JobAnalytics = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 
