@@ -113,6 +113,38 @@ const TranscriptView = () => {
     }
   }
 
+  const handleShare = async () => {
+    if (!sessionId || !transcript) return
+
+    try {
+      // Create a shareable link
+      const shareUrl = `${window.location.origin}/recruiter/sessions/${sessionId}/transcript`
+      
+      // Try to use Web Share API if available
+      if (navigator.share) {
+        await navigator.share({
+          title: `Interview Results - ${transcript.candidateName}`,
+          text: `Interview transcript for ${transcript.candidateName}`,
+          url: shareUrl,
+        })
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl)
+        alert('Link copied to clipboard!')
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(`${window.location.origin}/recruiter/sessions/${sessionId}/transcript`)
+          alert('Link copied to clipboard!')
+        } catch (clipboardErr) {
+          alert('Failed to share. Please copy the URL manually.')
+        }
+      }
+    }
+  }
+
   if (loading) {
     return <div className="loading">Loading transcript...</div>
   }
@@ -139,6 +171,34 @@ const TranscriptView = () => {
           </p>
         </div>
         <div className="header-actions">
+          <button 
+            className="btn btn-primary" 
+            onClick={() => navigate(`/recruiter/sessions/${sessionId}/replay`)}
+          >
+            Replay Interview
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => navigate(`/recruiter/sessions/${sessionId}/analytics`)}
+          >
+            View Analytics
+          </button>
+          <button className="btn btn-primary" onClick={() => handleShare()}>
+            Share Results
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              try {
+                await interviewApi.sendInterviewLink(sessionId!)
+                alert('Interview link sent successfully')
+              } catch (err) {
+                alert('Failed to send interview link')
+              }
+            }}
+          >
+            Send Interview Link
+          </button>
           <button className="btn btn-primary" onClick={() => handleExport('pdf')}>
             Export PDF
           </button>

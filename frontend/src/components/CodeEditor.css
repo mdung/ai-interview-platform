@@ -1,0 +1,122 @@
+.code-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.code-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-editor-language {
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.code-editor-cursor-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.code-editor-body {
+  display: flex;
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.code-editor-line-numbers {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  text-align: right;
+  user-select: none;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  border-right: 1px solid var(--border-color);
+  min-width: 50px;
+  overflow: hidden;
+}
+
+.line-number {
+  padding-right: 0.5rem;
+}
+
+.code-editor-textarea {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  outline: none;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  resize: none;
+  overflow: auto;
+  tab-size: 2;
+}
+
+.code-editor-textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+.code-editor-footer {
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.code-editor-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Dark theme */
+.code-editor-dark {
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #252526;
+  --text-primary: #d4d4d4;
+  --text-secondary: #858585;
+  --border-color: #3e3e42;
+}
+
+/* Light theme */
+.code-editor-light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f3f3f3;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #d0d0d0;
+}
+
+@media (max-width: 768px) {
+  .code-editor-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .code-editor-line-numbers {
+    min-width: 40px;
+    font-size: 12px;
+  }
+  
+  .code-editor-textarea {
+    font-size: 12px;
+  }
+}
+

@@ -19,6 +19,13 @@ api.interceptors.request.use((config) => {
 })
 
 export const interviewApi = {
+  createSession: (data: {
+    candidateId: number
+    templateId: number
+    language?: string
+    scheduledAt?: string
+  }) => api.post('/interviews/sessions', data),
+  
   getSession: (sessionId: string) => 
     api.get(`/interviews/sessions/${sessionId}`),
   
@@ -81,6 +88,20 @@ export const interviewApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  sendInterviewLink: (sessionId: string) =>
+    api.post(`/interviews/sessions/${sessionId}/send-link`),
+  
+  reportSuspiciousActivity: (sessionId: string, data: {
+    activityType: string
+    timestamp: string
+    metadata?: Record<string, any>
+  }) => api.post(`/interviews/sessions/${sessionId}/report-activity`, data),
+  
+  updateTurn: (sessionId: string, turnId: number, data: {
+    answer?: string
+    answerDurationMs?: number
+    audioUrl?: string
+  }) => api.put(`/interviews/sessions/${sessionId}/turns/${turnId}`, data),
 }
 
 export const authApi = {
@@ -116,19 +137,6 @@ export const authApi = {
     api.put('/auth/change-password', { currentPassword, newPassword }),
 }
 
-export const adminApi = {
-  getAllUsers: () => api.get('/admin/users'),
-  getUserById: (id: number) => api.get(`/admin/users/${id}`),
-  updateUser: (id: number, data: {
-    firstName: string
-    lastName: string
-    email: string
-  }) => api.put(`/admin/users/${id}`, data),
-  activateUser: (id: number) => api.put(`/admin/users/${id}/activate`),
-  deactivateUser: (id: number) => api.put(`/admin/users/${id}/deactivate`),
-  deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
-}
-
 export const jobApi = {
   getAllJobs: (params?: {
     search?: string
@@ -144,6 +152,10 @@ export const jobApi = {
   bulkCreate: (data: any[]) => api.post('/recruiter/jobs/bulk', data),
   bulkDelete: (ids: number[]) => api.delete('/recruiter/jobs/bulk', { data: ids }),
   getStatistics: () => api.get('/recruiter/jobs/statistics'),
+  getJobStatistics: (id: number) => api.get(`/recruiter/jobs/${id}/statistics`),
+  getJobCandidates: (id: number) => api.get(`/recruiter/jobs/${id}/candidates`),
+  publishJob: (id: number) => api.post(`/recruiter/jobs/${id}/publish`),
+  unpublishJob: (id: number) => api.post(`/recruiter/jobs/${id}/unpublish`),
 }
 
 export const templateApi = {
@@ -179,12 +191,14 @@ export const candidateApi = {
   bulkCreate: (data: any) => api.post('/recruiter/candidates/bulk', data),
   bulkDelete: (ids: number[]) => api.delete('/recruiter/candidates/bulk', { data: ids }),
   getStatistics: () => api.get('/recruiter/candidates/statistics'),
+  getCandidateInterviews: (id: number) => api.get(`/recruiter/candidates/${id}/interviews`),
 }
 
 export const analyticsApi = {
   getDashboardOverview: () => api.get('/recruiter/analytics/overview'),
   getInterviewAnalytics: () => api.get('/recruiter/analytics/interviews'),
   getCandidateAnalytics: () => api.get('/recruiter/analytics/candidates'),
+  getJobAnalytics: () => api.get('/recruiter/analytics/jobs'),
   getTrends: (params?: {
     metric?: string
     period?: string
@@ -202,6 +216,47 @@ export const analyticsApi = {
   exportCandidatePdf: () => api.get('/recruiter/analytics/reports/candidates/pdf', {
     responseType: 'blob',
   }),
+}
+
+export const atsApi = {
+  integrate: (data: {
+    provider: string
+    apiKey: string
+    apiSecret?: string
+    baseUrl: string
+    webhookUrl?: string
+    enabled?: boolean
+  }) => api.post('/ats/integrate', data),
+  
+  getIntegrations: () => api.get('/ats/integrations'),
+  
+  getIntegration: (id: number) => api.get(`/ats/integrations/${id}`),
+  
+  updateIntegration: (id: number, data: any) => api.put(`/ats/integrations/${id}`, data),
+  
+  deleteIntegration: (id: number) => api.delete(`/ats/integrations/${id}`),
+  
+  syncIntegration: (id: number) => api.post(`/ats/integrations/${id}/sync`),
+  
+  exportCandidate: (candidateId: number, integrationId: number) =>
+    api.post(`/ats/candidates/${candidateId}/export`, null, {
+      params: { integrationId },
+    }),
+}
+
+export const adminApi = {
+  getAllUsers: () => api.get('/admin/users'),
+  getUserById: (id: number) => api.get(`/admin/users/${id}`),
+  updateUser: (id: number, data: any) => api.put(`/admin/users/${id}`, data),
+  activateUser: (id: number) => api.put(`/admin/users/${id}/activate`),
+  deactivateUser: (id: number) => api.put(`/admin/users/${id}/activate`, { active: false }),
+  deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
+  getSystemStatistics: () => api.get('/admin/statistics'),
+  getSystemLogs: (params?: { level?: string; page?: number; size?: number }) =>
+    api.get('/admin/logs', { params }),
+  getSystemSettings: () => api.get('/admin/settings'),
+  updateSystemSettings: (settings: any) => api.put('/admin/settings', settings),
+  getSystemHealth: () => api.get('/admin/health'),
 }
 
 export const notificationApi = {

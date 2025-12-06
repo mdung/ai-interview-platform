@@ -19,7 +19,7 @@ export class InterviewWebSocket {
   }
 
   connect(): void {
-    const wsUrl = `ws://localhost:8000/ws/interview/${this.sessionId}`
+    const wsUrl = `ws://localhost:8080/ws/interview/${this.sessionId}`
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {
@@ -75,14 +75,38 @@ export class InterviewWebSocket {
     }
   }
 
-  private attemptReconnect(): void {
+  attemptReconnect(): void {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
-      console.log(`Attempting to reconnect in ${delay}ms...`)
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (max)
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000)
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
       setTimeout(() => this.connect(), delay)
     } else {
       console.error('Max reconnection attempts reached')
+      this.onError(new Event('max_reconnect_attempts'))
+    }
+  }
+  
+  // Check connection health
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN
+  }
+  
+  // Get connection state
+  getConnectionState(): 'connecting' | 'connected' | 'disconnected' | 'failed' {
+    if (!this.ws) return 'disconnected'
+    
+    switch (this.ws.readyState) {
+      case WebSocket.CONNECTING:
+        return 'connecting'
+      case WebSocket.OPEN:
+        return 'connected'
+      case WebSocket.CLOSING:
+      case WebSocket.CLOSED:
+        return 'disconnected'
+      default:
+        return 'failed'
     }
   }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyticsApi } from '../services/api'
+import { LineChartComponent, BarChartComponent, PieChartComponent, LoadingSpinner, ErrorDisplay, PageLayout } from '../components'
 import './Analytics.css'
 
 const Analytics = () => {
@@ -95,18 +96,38 @@ const Analytics = () => {
     }
   }
 
-  if (loading) {
-    return <div className="loading">Loading analytics...</div>
+  if (loading && !overview) {
+    return (
+      <PageLayout title="Analytics & Reports">
+        <LoadingSpinner message="Loading analytics..." />
+      </PageLayout>
+    )
   }
 
   return (
+    <PageLayout
+      title="Analytics & Reports"
+      actions={
+        <>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/recruiter/analytics/jobs')}
+          >
+            Job Analytics
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/recruiter/reports')}
+          >
+            Generate Reports
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/analytics/advanced')}>
+            Advanced Analytics
+          </button>
+        </>
+      }
+    >
     <div className="analytics-container">
-      <div className="analytics-header">
-        <h1>Analytics & Reports</h1>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
 
       <div className="analytics-tabs">
         <button
@@ -137,45 +158,74 @@ const Analytics = () => {
 
       <div className="analytics-content">
         {activeTab === 'overview' && overview && (
-          <div className="analytics-panel">
-            <div className="panel-header">
-              <h2>Dashboard Overview</h2>
-              <div className="export-buttons">
-                <button className="btn btn-small btn-primary" onClick={() => handleExport('dashboard', 'pdf')}>
-                  Export PDF
-                </button>
-                <button className="btn btn-small btn-primary" onClick={() => handleExport('dashboard', 'csv')}>
-                  Export CSV
-                </button>
+          <>
+            <div className="analytics-panel">
+              <div className="panel-header">
+                <h2>Dashboard Overview</h2>
+                <div className="export-buttons">
+                  <button className="btn btn-small btn-primary" onClick={() => handleExport('dashboard', 'pdf')}>
+                    Export PDF
+                  </button>
+                  <button className="btn btn-small btn-primary" onClick={() => handleExport('dashboard', 'csv')}>
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              <div className="stats-grid">
+                <div className="stat-card">
+                  <h3>Total Candidates</h3>
+                  <p className="stat-value">{overview.totalCandidates || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Total Jobs</h3>
+                  <p className="stat-value">{overview.totalJobs || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Total Interviews</h3>
+                  <p className="stat-value">{overview.totalInterviews || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Completion Rate</h3>
+                  <p className="stat-value">{overview.completionRate?.toFixed(1) || 0}%</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Active Interviews</h3>
+                  <p className="stat-value">{overview.activeInterviews || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Completed Interviews</h3>
+                  <p className="stat-value">{overview.completedInterviews || 0}</p>
+                </div>
               </div>
             </div>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <h3>Total Candidates</h3>
-                <p className="stat-value">{overview.totalCandidates}</p>
+            
+            {overview.interviewsByDay && Object.keys(overview.interviewsByDay).length > 0 && (
+              <div className="analytics-panel">
+                <h2>Interviews Over Time</h2>
+                <LineChartComponent
+                  data={Object.entries(overview.interviewsByDay).map(([date, count]) => ({
+                    name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    value: count as number
+                  }))}
+                  dataKeys={['value']}
+                  title="Daily Interviews"
+                />
               </div>
-              <div className="stat-card">
-                <h3>Total Jobs</h3>
-                <p className="stat-value">{overview.totalJobs}</p>
+            )}
+            
+            {overview.interviewsByStatus && Object.keys(overview.interviewsByStatus).length > 0 && (
+              <div className="analytics-panel">
+                <h2>Interviews by Status</h2>
+                <PieChartComponent
+                  data={Object.entries(overview.interviewsByStatus).map(([status, count]) => ({
+                    name: status,
+                    value: count as number
+                  }))}
+                  title="Status Distribution"
+                />
               </div>
-              <div className="stat-card">
-                <h3>Total Interviews</h3>
-                <p className="stat-value">{overview.totalInterviews}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Completion Rate</h3>
-                <p className="stat-value">{overview.completionRate?.toFixed(1)}%</p>
-              </div>
-              <div className="stat-card">
-                <h3>Active Interviews</h3>
-                <p className="stat-value">{overview.activeInterviews}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Completed Interviews</h3>
-                <p className="stat-value">{overview.completedInterviews}</p>
-              </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         {activeTab === 'interviews' && interviewAnalytics && (
@@ -247,23 +297,38 @@ const Analytics = () => {
         {activeTab === 'trends' && trends && (
           <div className="analytics-panel">
             <h2>Trend Analysis</h2>
-            <div className="trends-list">
-              {trends.dataPoints?.map((point: any, index: number) => (
-                <div key={index} className="trend-item">
-                  <span className="trend-date">{point.date}</span>
-                  <span className="trend-value">{point.value}</span>
-                  {point.percentageChange !== null && (
-                    <span className={`trend-change ${point.percentageChange >= 0 ? 'positive' : 'negative'}`}>
-                      {point.percentageChange >= 0 ? '+' : ''}{point.percentageChange?.toFixed(1)}%
-                    </span>
-                  )}
+            {trends.dataPoints && trends.dataPoints.length > 0 ? (
+              <>
+                <LineChartComponent
+                  data={trends.dataPoints.map((point: any) => ({
+                    name: point.date,
+                    value: point.value
+                  }))}
+                  dataKeys={['value']}
+                  title="Trend Over Time"
+                />
+                <div className="trends-list">
+                  {trends.dataPoints.map((point: any, index: number) => (
+                    <div key={index} className="trend-item">
+                      <span className="trend-date">{point.date}</span>
+                      <span className="trend-value">{point.value}</span>
+                      {point.percentageChange !== null && (
+                        <span className={`trend-change ${point.percentageChange >= 0 ? 'positive' : 'negative'}`}>
+                          {point.percentageChange >= 0 ? '+' : ''}{point.percentageChange?.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <p>No trend data available</p>
+            )}
           </div>
         )}
       </div>
     </div>
+    </PageLayout>
   )
 }
 

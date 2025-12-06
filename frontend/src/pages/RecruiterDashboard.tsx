@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { InterviewSession } from '../types'
 import { interviewApi, analyticsApi } from '../services/api'
-import AudioPlayer from '../components/AudioPlayer'
+import { PageLayout, AudioPlayer, NotificationBell, BulkActions, useToast } from '../components'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import './RecruiterDashboard.css'
 
 const RecruiterDashboard = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [sessions, setSessions] = useState<InterviewSession[]>([])
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null)
   const [transcript, setTranscript] = useState<any>(null)
@@ -19,6 +20,8 @@ const RecruiterDashboard = () => {
   const [filters, setFilters] = useState({
     search: '',
     status: '',
+    startDate: '',
+    endDate: '',
     page: 0,
     size: 10,
     sortBy: 'startedAt',
@@ -33,13 +36,18 @@ const RecruiterDashboard = () => {
     setLoading(true)
     try {
       // Load sessions with real API
-      const sessionsResponse = await interviewApi.getAllSessions({
-        status: filters.status || undefined,
+      const params: any = {
         page: filters.page,
         size: filters.size,
         sortBy: filters.sortBy,
         sortDir: filters.sortDir,
-      })
+      }
+      
+      if (filters.status) params.status = filters.status
+      if (filters.startDate) params.startDate = filters.startDate
+      if (filters.endDate) params.endDate = filters.endDate
+      
+      const sessionsResponse = await interviewApi.getAllSessions(params)
       setSessions(sessionsResponse.data.sessions || [])
 
       // Load dashboard statistics
@@ -86,19 +94,45 @@ const RecruiterDashboard = () => {
 
   const handleBulkAction = async (action: 'delete' | 'export') => {
     if (selectedSessions.size === 0) {
-      alert('Please select at least one session')
+      showToast('Please select at least one session', 'warning')
       return
     }
 
+    const selectedSessionIds = Array.from(selectedSessions)
+
     if (action === 'delete') {
-      if (!window.confirm(`Delete ${selectedSessions.size} session(s)?`)) {
-        return
+      try {
+        // Delete sessions one by one (or implement bulk delete API)
+        await Promise.all(
+          selectedSessionIds.map((id) => {
+            const session = sessions.find((s) => s.id === id)
+            return session ? interviewApi.updateSessionStatus(session.sessionId, 'ABANDONED') : Promise.resolve()
+          })
+        )
+        showToast(`${selectedSessions.size} session(s) deleted`, 'success')
+        setSelectedSessions(new Set())
+        loadDashboardData()
+      } catch (err) {
+        showToast('Failed to delete sessions', 'error')
       }
-      // Implement bulk delete
-      alert('Bulk delete functionality to be implemented')
     } else if (action === 'export') {
-      // Export all selected sessions
-      alert('Bulk export functionality to be implemented')
+      try {
+        const { exportToCsv } = await import('../utils/exportUtils')
+        const selectedSessionsData = sessions
+          .filter((s) => selectedSessions.has(s.id))
+          .map((session) => ({
+            'Session ID': session.sessionId,
+            'Candidate': session.candidateName,
+            'Template': session.templateName,
+            'Status': session.status,
+            'Started At': new Date(session.startedAt).toLocaleString(),
+            'Total Turns': session.totalTurns
+          }))
+        exportToCsv(selectedSessionsData, `sessions_bulk_${new Date().toISOString().split('T')[0]}`)
+        showToast(`${selectedSessions.size} session(s) exported`, 'success')
+      } catch (err) {
+        showToast('Failed to export sessions', 'error')
+      }
     }
   }
 
@@ -120,6 +154,32 @@ const RecruiterDashboard = () => {
     }
   }
 
+  const handleShareSession = async (session: InterviewSession) => {
+    try {
+      const shareUrl = `${window.location.origin}/recruiter/sessions/${session.sessionId}/transcript`
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: `Interview Results - ${session.candidateName}`,
+          text: `Interview transcript for ${session.candidateName}`,
+          url: shareUrl,
+        })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        showToast('Link copied to clipboard!', 'success')
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        try {
+          await navigator.clipboard.writeText(`${window.location.origin}/recruiter/sessions/${session.sessionId}/transcript`)
+          showToast('Link copied to clipboard!', 'success')
+        } catch (clipboardErr) {
+          showToast('Failed to share. Please copy the URL manually.', 'error')
+        }
+      }
+    }
+  }
+
   if (loading && !sessions.length) {
     return <div className="loading">Loading dashboard...</div>
   }
@@ -136,36 +196,18 @@ const RecruiterDashboard = () => {
   })) : []
 
   return (
-    <div className="recruiter-dashboard">
-      <div className="dashboard-header">
-        <h1>Recruiter Dashboard</h1>
-        <div className="header-actions">
-          <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions')}>
-            All Sessions
+    <PageLayout 
+      title="Recruiter Dashboard"
+      actions={
+        <>
+          <NotificationBell />
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions/new')}>
+            ➕ Create Session
           </button>
-          <button className="btn btn-primary" onClick={() => navigate('/recruiter/jobs')}>
-            Jobs
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/recruiter/templates')}>
-            Templates
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/recruiter/candidates')}>
-            Candidates
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/recruiter/analytics')}>
-            Analytics
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/settings')}>
-            Settings
-          </button>
-          <button className="btn btn-secondary" onClick={() => {
-            localStorage.removeItem('token')
-            navigate('/')
-          }}>
-            Logout
-          </button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="dashboard-content">
 
       {/* Statistics Cards */}
       {stats && (
@@ -231,21 +273,21 @@ const RecruiterDashboard = () => {
 
       <div className="dashboard-content">
         <div className="sessions-section">
-          <div className="sessions-header">
-            <h2>Recent Interview Sessions</h2>
-            <div className="sessions-actions">
-              {selectedSessions.size > 0 && (
-                <>
-                  <button className="btn btn-small btn-primary" onClick={() => handleBulkAction('export')}>
-                    Export Selected ({selectedSessions.size})
-                  </button>
-                  <button className="btn btn-small btn-danger" onClick={() => handleBulkAction('delete')}>
-                    Delete Selected
-                  </button>
-                </>
-              )}
-            </div>
+          <div className="section-header">
+            <h2 className="section-title">📋 RECENT INTERVIEW SESSIONS</h2>
+            <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions')}>
+              View All Sessions →
+            </button>
           </div>
+
+          {selectedSessions.size > 0 && (
+            <BulkActions
+              selectedCount={selectedSessions.size}
+              onBulkDelete={() => handleBulkAction('delete')}
+              onBulkExport={() => handleBulkAction('export')}
+              availableActions={['delete', 'export']}
+            />
+          )}
 
           {/* Filters */}
           <div className="filters-bar">
@@ -268,6 +310,20 @@ const RecruiterDashboard = () => {
               <option value="COMPLETED">Completed</option>
               <option value="ABANDONED">Abandoned</option>
             </select>
+            <input
+              type="date"
+              className="input"
+              placeholder="Start Date"
+              value={filters.startDate}
+              onChange={(e) => setFilters({ ...filters, startDate: e.target.value, page: 0 })}
+            />
+            <input
+              type="date"
+              className="input"
+              placeholder="End Date"
+              value={filters.endDate}
+              onChange={(e) => setFilters({ ...filters, endDate: e.target.value, page: 0 })}
+            />
             <select
               className="input"
               value={filters.sortBy}
@@ -285,6 +341,21 @@ const RecruiterDashboard = () => {
               <option value="desc">Descending</option>
               <option value="asc">Ascending</option>
             </select>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setFilters({
+                search: '',
+                status: '',
+                startDate: '',
+                endDate: '',
+                page: 0,
+                size: 10,
+                sortBy: 'startedAt',
+                sortDir: 'desc',
+              })}
+            >
+              Clear Filters
+            </button>
           </div>
 
           {/* Sessions Table */}
@@ -333,6 +404,18 @@ const RecruiterDashboard = () => {
                           onClick={() => handleViewSession(session)}
                         >
                           View
+                        </button>
+                        <button
+                          className="btn btn-small btn-secondary"
+                          onClick={() => navigate(`/recruiter/sessions/${session.sessionId}/replay`)}
+                        >
+                          Replay
+                        </button>
+                        <button
+                          className="btn btn-small btn-secondary"
+                          onClick={() => handleShareSession(session)}
+                        >
+                          Share
                         </button>
                         <button
                           className="btn btn-small btn-secondary"
@@ -466,7 +549,8 @@ const RecruiterDashboard = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 

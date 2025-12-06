@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { interviewApi } from '../services/api'
 import { InterviewSession } from '../types'
+import { exportToCsv, downloadBlob } from '../utils/exportUtils'
+import { PageLayout, BulkActions, useToast } from '../components'
 import './SessionList.css'
 
 interface SessionListResponse {
@@ -14,9 +16,12 @@ interface SessionListResponse {
 
 const SessionList = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [sessions, setSessions] = useState<SessionListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [selectedSessions, setSelectedSessions] = useState<Set<number>>(new Set())
 
   // Filters
   const [filters, setFilters] = useState({
@@ -69,25 +74,113 @@ const SessionList = () => {
     setFilters({ ...filters, page: newPage })
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedSessions.size === 0) return
+    
+    try {
+      await Promise.all(
+        Array.from(selectedSessions).map((id) => {
+          const session = sessions?.sessions.find((s) => s.id === id)
+          return session ? interviewApi.updateSessionStatus(session.sessionId, 'ABANDONED') : Promise.resolve()
+        })
+      )
+      showToast(`${selectedSessions.size} session(s) deleted`, 'success')
+      setSelectedSessions(new Set())
+      loadSessions()
+    } catch (err) {
+      showToast('Failed to delete sessions', 'error')
+    }
+  }
+
+  const handleBulkExport = () => {
+    if (selectedSessions.size === 0) {
+      showToast('Please select sessions to export', 'warning')
+      return
+    }
+
+    const selectedData = sessions?.sessions
+      .filter((s) => selectedSessions.has(s.id))
+      .map((session) => ({
+        'Session ID': session.sessionId,
+        'Candidate': session.candidateName,
+        'Template': session.templateName,
+        'Status': session.status,
+        'Started At': new Date(session.startedAt).toLocaleString(),
+        'Total Turns': session.totalTurns
+      })) || []
+
+    exportToCsv(selectedData, `sessions_selected_${new Date().toISOString().split('T')[0]}`)
+    showToast(`${selectedSessions.size} session(s) exported`, 'success')
+  }
+
+  const toggleSessionSelection = (id: number) => {
+    const newSelected = new Set(selectedSessions)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedSessions(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedSessions.size === sessions?.sessions.length) {
+      setSelectedSessions(new Set())
+    } else {
+      setSelectedSessions(new Set(sessions?.sessions.map((s) => s.id) || []))
+    }
+  }
+
   const handleExport = async (sessionId: string, format: 'pdf' | 'csv') => {
     try {
+      setExporting(true)
       const response = format === 'pdf'
         ? await interviewApi.exportPdf(sessionId)
         : await interviewApi.exportCsv(sessionId)
 
-      const blob = new Blob([response.data], {
-        type: format === 'pdf' ? 'application/pdf' : 'text/csv',
-      })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `transcript_${sessionId}.${format}`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
+      downloadBlob(
+        response.data,
+        `transcript_${sessionId}.${format}`,
+        format === 'pdf' ? 'application/pdf' : 'text/csv'
+      )
+      showToast(`Transcript exported as ${format.toUpperCase()}`, 'success')
     } catch (err: any) {
-      alert('Failed to export transcript')
+      showToast('Failed to export transcript', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportAll = async (format: 'csv' | 'json') => {
+    if (!sessions || sessions.sessions.length === 0) {
+      showToast('No sessions to export', 'warning')
+      return
+    }
+
+    try {
+      setExporting(true)
+      const exportData = sessions.sessions.map((session) => ({
+        'Session ID': session.sessionId,
+        'Candidate': session.candidateName,
+        'Template': session.templateName,
+        'Status': session.status,
+        'Started At': new Date(session.startedAt).toLocaleString(),
+        'Completed At': session.completedAt ? new Date(session.completedAt).toLocaleString() : 'N/A',
+        'Total Turns': session.totalTurns,
+        'Recommendation': session.recommendation || 'N/A'
+      }))
+
+      if (format === 'csv') {
+        exportToCsv(exportData, `sessions_export_${new Date().toISOString().split('T')[0]}`)
+      } else {
+        const { exportToJson } = await import('../utils/exportUtils')
+        exportToJson(exportData, `sessions_export_${new Date().toISOString().split('T')[0]}`)
+      }
+      showToast(`All sessions exported as ${format.toUpperCase()}`, 'success')
+    } catch (err: any) {
+      showToast('Failed to export sessions', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -96,18 +189,40 @@ const SessionList = () => {
   }
 
   return (
-    <div className="session-list-container">
-      <div className="session-list-header">
-        <h1>Interview Sessions</h1>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
+    <PageLayout
+      title="All Interview Sessions"
+      actions={
+        <>
+          <button
+            className="btn btn-secondary"
+            onClick={() => handleExportAll('csv')}
+            disabled={exporting || !sessions || sessions.sessions.length === 0}
+          >
+            {exporting ? '⏳ Exporting...' : '📥 Export All (CSV)'}
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/recruiter/sessions/new')}>
+            ➕ Create New Session
+          </button>
+          <button className="btn btn-info" onClick={() => navigate('/recruiter/calendar')}>
+            📅 Calendar View
+          </button>
+        </>
+      }
+    >
+      <div className="session-list-content">
+        {error && <div className="error-message">{error}</div>}
 
-      {error && <div className="error-message">{error}</div>}
+      {selectedSessions.size > 0 && (
+        <BulkActions
+          selectedCount={selectedSessions.size}
+          onBulkDelete={handleBulkDelete}
+          onBulkExport={handleBulkExport}
+          availableActions={['delete', 'export']}
+        />
+      )}
 
       <div className="filters-panel">
-        <h3>Filters</h3>
+        <h3 className="filter-title">🔍 SEARCH & FILTER OPTIONS</h3>
         <div className="filters-grid">
           <div className="filter-group">
             <label>Status</label>
@@ -172,6 +287,13 @@ const SessionList = () => {
         <table className="sessions-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={selectedSessions.size === sessions?.sessions.length && sessions.sessions.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th>Session ID</th>
               <th>Candidate</th>
               <th>Template</th>
@@ -184,6 +306,13 @@ const SessionList = () => {
           <tbody>
             {sessions?.sessions.map((session) => (
               <tr key={session.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedSessions.has(session.id)}
+                    onChange={() => toggleSessionSelection(session.id)}
+                  />
+                </td>
                 <td>{session.sessionId.substring(0, 8)}...</td>
                 <td>{session.candidateName}</td>
                 <td>{session.templateName}</td>
@@ -273,7 +402,8 @@ const SessionList = () => {
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 

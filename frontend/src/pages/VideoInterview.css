@@ -1,0 +1,45 @@
+.video-interview-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.video-interview-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.video-interview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.question-section {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.question-section h2 {
+  margin-bottom: 1rem;
+}
+
+.recorder-section {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.video-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .video-interview-container {
+    padding: 1rem;
+  }
+}
+

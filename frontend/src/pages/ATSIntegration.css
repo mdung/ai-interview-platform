@@ -1,0 +1,107 @@
+.ats-integration-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.integration-form {
+  background: var(--bg-secondary);
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.integration-form h2 {
+  margin-bottom: 1.5rem;
+}
+
+.integrations-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.integration-card {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.integration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: bold;
+}
+
+.status-connected {
+  background: var(--success);
+  color: white;
+}
+
+.status-disconnected {
+  background: var(--warning);
+  color: white;
+}
+
+.status-error {
+  background: var(--error);
+  color: white;
+}
+
+.integration-details {
+  margin-bottom: 1rem;
+}
+
+.integration-details p {
+  margin: 0.5rem 0;
+  color: var(--text-secondary);
+}
+
+.integration-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+}
+
+.empty-state .hint {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .ats-integration-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .integration-actions {
+    flex-direction: column;
+  }
+}
+

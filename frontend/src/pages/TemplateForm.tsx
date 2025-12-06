@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { templateApi, jobApi } from '../services/api'
+import { PageLayout } from '../components'
 import './TemplateForm.css'
 
 const TemplateForm = () => {
@@ -18,6 +19,8 @@ const TemplateForm = () => {
     estimatedDurationMinutes: 30,
   })
   const [questionInput, setQuestionInput] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
+  const [builderMode, setBuilderMode] = useState(false)
 
   useEffect(() => {
     loadJobs()
@@ -28,10 +31,25 @@ const TemplateForm = () => {
 
   const loadJobs = async () => {
     try {
-      const response = await jobApi.getAllJobs()
-      setJobs(response.data.jobs || [])
-    } catch (err) {
-      console.error('Failed to load jobs')
+      const response = await jobApi.getAllJobs({ page: 0, size: 100 })
+      // Handle different response structures
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          setJobs(response.data)
+        } else if (response.data.jobs) {
+          setJobs(response.data.jobs)
+        } else if (response.data.content) {
+          setJobs(response.data.content)
+        } else {
+          setJobs([])
+        }
+      } else {
+        setJobs([])
+      }
+    } catch (err: any) {
+      console.error('Failed to load jobs:', err)
+      setError('Failed to load jobs. Please try again.')
+      setJobs([])
     }
   }
 
@@ -92,22 +110,21 @@ const TemplateForm = () => {
   }
 
   return (
+    <PageLayout
+      title={id ? 'Edit Template' : 'Create New Template'}
+    >
     <div className="template-form-container">
-      <div className="template-form-header">
-        <h1>{id ? 'Edit Template' : 'Create New Template'}</h1>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <form onSubmit={handleSubmit} className="template-form">
         <div className="form-group">
-          <label>Template Name *</label>
+          <label htmlFor="templateName">Template Name *</label>
           <input
+            id="templateName"
             type="text"
             className="input"
+            placeholder="Enter template name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -115,8 +132,9 @@ const TemplateForm = () => {
         </div>
 
         <div className="form-group">
-          <label>Job *</label>
+          <label htmlFor="jobId">Job *</label>
           <select
+            id="jobId"
             className="input"
             value={formData.jobId}
             onChange={(e) => setFormData({ ...formData, jobId: e.target.value })}
@@ -129,11 +147,17 @@ const TemplateForm = () => {
               </option>
             ))}
           </select>
+          {jobs.length === 0 && (
+            <p className="form-hint">
+              No jobs available. <a href="/recruiter/jobs/new">Create a job</a> first.
+            </p>
+          )}
         </div>
 
         <div className="form-group">
-          <label>Interview Mode *</label>
+          <label htmlFor="interviewMode">Interview Mode *</label>
           <select
+            id="interviewMode"
             className="input"
             value={formData.mode}
             onChange={(e) => setFormData({ ...formData, mode: e.target.value })}
@@ -146,13 +170,14 @@ const TemplateForm = () => {
         </div>
 
         <div className="form-group">
-          <label>System Prompt</label>
+          <label htmlFor="systemPrompt">System Prompt</label>
           <textarea
+            id="systemPrompt"
             className="input"
             rows={6}
+            placeholder="Custom system prompt for AI interviewer..."
             value={formData.systemPrompt}
             onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
-            placeholder="Custom system prompt for AI interviewer..."
           />
         </div>
 
@@ -187,31 +212,163 @@ const TemplateForm = () => {
         </div>
 
         <div className="form-group">
-          <label>Estimated Duration (minutes) *</label>
+          <label htmlFor="estimatedDuration">Estimated Duration (minutes) *</label>
           <input
+            id="estimatedDuration"
             type="number"
             className="input"
             min="1"
+            placeholder="30"
             value={formData.estimatedDurationMinutes}
-            onChange={(e) => setFormData({ ...formData, estimatedDurationMinutes: parseInt(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, estimatedDurationMinutes: parseInt(e.target.value) || 30 })}
             required
           />
         </div>
 
         <div className="form-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setShowPreview(!showPreview)}
+          >
+            {showPreview ? 'Hide Preview' : 'Preview Template'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setBuilderMode(!builderMode)}
+          >
+            {builderMode ? 'Simple Mode' : 'Builder Mode'}
+          </button>
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Saving...' : id ? 'Update Template' : 'Create Template'}
           </button>
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/recruiter/templates')}
           >
             Cancel
           </button>
         </div>
+
+        {showPreview && (
+          <div className="template-preview">
+            <h2>Template Preview</h2>
+            <div className="preview-content">
+              <div className="preview-section">
+                <h3>Template Information</h3>
+                <p><strong>Name:</strong> {formData.name || 'Untitled Template'}</p>
+                <p><strong>Job:</strong> {jobs.find(j => j.id.toString() === formData.jobId)?.title || 'Not selected'}</p>
+                <p><strong>Mode:</strong> {formData.mode}</p>
+                <p><strong>Estimated Duration:</strong> {formData.estimatedDurationMinutes} minutes</p>
+              </div>
+              {formData.systemPrompt && (
+                <div className="preview-section">
+                  <h3>System Prompt</h3>
+                  <div className="preview-text">{formData.systemPrompt}</div>
+                </div>
+              )}
+              {formData.questionBank.length > 0 && (
+                <div className="preview-section">
+                  <h3>Question Bank ({formData.questionBank.length} questions)</h3>
+                  <ol className="preview-questions">
+                    {formData.questionBank.map((question, index) => (
+                      <li key={index}>{question}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {builderMode && (
+          <div className="template-builder">
+            <h2>Template Builder</h2>
+            <div className="builder-content">
+              <div className="builder-section">
+                <h3>Question Bank Manager</h3>
+                <div className="question-bank-manager">
+                  <div className="question-input-area">
+                    <textarea
+                      className="input"
+                      rows={3}
+                      placeholder="Enter a question..."
+                      value={questionInput}
+                      onChange={(e) => setQuestionInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.ctrlKey) {
+                          e.preventDefault()
+                          addQuestion()
+                        }
+                      }}
+                    />
+                    <div className="input-hint">Press Ctrl+Enter to add question</div>
+                    <button type="button" className="btn btn-primary" onClick={addQuestion}>
+                      Add Question
+                    </button>
+                  </div>
+                  <div className="questions-bank-list">
+                    <h4>Questions ({formData.questionBank.length})</h4>
+                    {formData.questionBank.length === 0 ? (
+                      <p className="empty-message">No questions added yet. Add questions above.</p>
+                    ) : (
+                      <div className="questions-grid">
+                        {formData.questionBank.map((question, index) => (
+                          <div key={index} className="question-card" draggable>
+                            <div className="question-number">{index + 1}</div>
+                            <div className="question-text">{question}</div>
+                            <div className="question-actions">
+                              <button
+                                type="button"
+                                className="btn btn-small btn-secondary"
+                                onClick={() => {
+                                  const newOrder = [...formData.questionBank]
+                                  if (index > 0) {
+                                    [newOrder[index], newOrder[index - 1]] = [newOrder[index - 1], newOrder[index]]
+                                    setFormData({ ...formData, questionBank: newOrder })
+                                  }
+                                }}
+                                disabled={index === 0}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-small btn-secondary"
+                                onClick={() => {
+                                  const newOrder = [...formData.questionBank]
+                                  if (index < newOrder.length - 1) {
+                                    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]]
+                                    setFormData({ ...formData, questionBank: newOrder })
+                                  }
+                                }}
+                                disabled={index === formData.questionBank.length - 1}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-small btn-danger"
+                                onClick={() => removeQuestion(index)}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </form>
     </div>
+    </PageLayout>
   )
 }
 

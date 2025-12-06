@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { jobApi } from '../services/api'
+import { exportToCsv } from '../utils/exportUtils'
+import { BulkActions, useToast, PageLayout } from '../components'
 import './JobList.css'
 
 interface Job {
@@ -24,9 +26,12 @@ interface JobListResponse {
 
 const JobList = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [jobs, setJobs] = useState<JobListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [exporting, setExporting] = useState(false)
+  const [selectedJobs, setSelectedJobs] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState({
     search: '',
     page: 0,
@@ -59,9 +64,92 @@ const JobList = () => {
 
     try {
       await jobApi.deleteJob(id)
+      showToast('Job deleted successfully', 'success')
       loadJobs()
     } catch (err: any) {
-      alert('Failed to delete job')
+      showToast('Failed to delete job', 'error')
+    }
+  }
+
+  const handleExportAll = () => {
+    if (!jobs || jobs.jobs.length === 0) {
+      showToast('No jobs to export', 'warning')
+      return
+    }
+
+    try {
+      setExporting(true)
+      const exportData = jobs.jobs.map((job) => ({
+        'ID': job.id,
+        'Title': job.title,
+        'Description': job.description?.substring(0, 100) || 'N/A',
+        'Seniority Level': job.seniorityLevel,
+        'Required Skills': job.requiredSkills?.join('; ') || 'N/A',
+        'Soft Skills': job.softSkills?.join('; ') || 'N/A',
+        'Active': job.active ? 'Yes' : 'No',
+        'Created At': new Date(job.createdAt).toLocaleString()
+      }))
+
+      exportToCsv(exportData, `jobs_export_${new Date().toISOString().split('T')[0]}`)
+      showToast('Jobs exported successfully', 'success')
+    } catch (err: any) {
+      showToast('Failed to export jobs', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedJobs.size === 0) return
+    
+    try {
+      await jobApi.bulkDelete(Array.from(selectedJobs))
+      showToast(`${selectedJobs.size} job(s) deleted`, 'success')
+      setSelectedJobs(new Set())
+      loadJobs()
+    } catch (err: any) {
+      showToast('Failed to delete jobs', 'error')
+    }
+  }
+
+  const handleBulkExport = () => {
+    if (selectedJobs.size === 0) {
+      showToast('Please select jobs to export', 'warning')
+      return
+    }
+
+    const selectedData = jobs?.jobs
+      .filter((j) => selectedJobs.has(j.id))
+      .map((job) => ({
+        'ID': job.id,
+        'Title': job.title,
+        'Description': job.description?.substring(0, 100) || 'N/A',
+        'Seniority Level': job.seniorityLevel,
+        'Required Skills': job.requiredSkills?.join('; ') || 'N/A',
+        'Soft Skills': job.softSkills?.join('; ') || 'N/A',
+        'Active': job.active ? 'Yes' : 'No',
+        'Created At': new Date(job.createdAt).toLocaleString()
+      })) || []
+
+    exportToCsv(selectedData, `jobs_selected_${new Date().toISOString().split('T')[0]}`)
+    showToast(`${selectedJobs.size} job(s) exported`, 'success')
+  }
+
+  const toggleJobSelection = (id: number) => {
+    const newSelected = new Set(selectedJobs)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedJobs(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedJobs.size === jobs?.jobs.length) {
+      setSelectedJobs(new Set())
+    } else {
+      setSelectedJobs(new Set(jobs?.jobs.map((j) => j.id) || []))
     }
   }
 
@@ -70,27 +158,32 @@ const JobList = () => {
   }
 
   return (
-    <div className="job-list-container">
-      <div className="job-list-header">
-        <h1>Job Management</h1>
-        <div className="header-actions">
+    <PageLayout
+      title="Job Management"
+      actions={
+        <>
+          <button
+            className="btn btn-secondary"
+            onClick={handleExportAll}
+            disabled={exporting || !jobs || jobs.jobs.length === 0}
+          >
+            {exporting ? 'Exporting...' : 'Export All (CSV)'}
+          </button>
           <button className="btn btn-primary" onClick={() => navigate('/recruiter/jobs/new')}>
-            Create New Job
+            ➕ Create New Job
           </button>
-          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Back
-          </button>
-        </div>
-      </div>
-
+        </>
+      }
+    >
+    <div className="job-list-container">
       {error && <div className="error-message">{error}</div>}
 
-      <div className="filters-panel">
-        <div className="filter-group">
-          <label>Search</label>
+      <div className="search-filter-section">
+        <div className="search-input-wrapper">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
-            className="input"
+            className="search-input"
             placeholder="Search by title or description..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value, page: 0 })}
@@ -98,10 +191,26 @@ const JobList = () => {
         </div>
       </div>
 
+      {selectedJobs.size > 0 && (
+        <BulkActions
+          selectedCount={selectedJobs.size}
+          onBulkDelete={handleBulkDelete}
+          onBulkExport={handleBulkExport}
+          availableActions={['delete', 'export']}
+        />
+      )}
+
       <div className="jobs-table-container">
         <table className="jobs-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={selectedJobs.size === jobs?.jobs.length && jobs.jobs.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th>ID</th>
               <th>Title</th>
               <th>Seniority</th>
@@ -113,6 +222,13 @@ const JobList = () => {
           <tbody>
             {jobs?.jobs.map((job) => (
               <tr key={job.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedJobs.has(job.id)}
+                    onChange={() => toggleJobSelection(job.id)}
+                  />
+                </td>
                 <td>{job.id}</td>
                 <td>{job.title}</td>
                 <td>
@@ -132,9 +248,21 @@ const JobList = () => {
                     </button>
                     <button
                       className="btn btn-small btn-primary"
+                      onClick={() => navigate(`/recruiter/jobs/${job.id}`)}
+                    >
+                      View
+                    </button>
+                    <button
+                      className="btn btn-small btn-primary"
                       onClick={() => navigate(`/recruiter/jobs/${job.id}/edit`)}
                     >
                       Edit
+                    </button>
+                    <button
+                      className="btn btn-small btn-secondary"
+                      onClick={() => navigate(`/recruiter/jobs/${job.id}/candidates`)}
+                    >
+                      Candidates
                     </button>
                     <button
                       className="btn btn-small btn-danger"
@@ -172,6 +300,7 @@ const JobList = () => {
         </div>
       )}
     </div>
+    </PageLayout>
   )
 }
 

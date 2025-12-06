@@ -7,16 +7,20 @@ import com.aiinterview.model.InterviewTemplate;
 import com.aiinterview.repository.CandidateRepository;
 import com.aiinterview.repository.InterviewSessionRepository;
 import com.aiinterview.repository.InterviewTemplateRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.annotation.Lazy;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -122,9 +126,34 @@ public class InterviewSessionService {
         
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<InterviewSession> sessionPage = sessionRepository.findWithFilters(
-            status, candidateId, templateId, startDate, endDate, pageable
-        );
+        // Build dynamic query using Specification
+        Specification<InterviewSession> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            
+            if (candidateId != null) {
+                predicates.add(cb.equal(root.get("candidate").get("id"), candidateId));
+            }
+            
+            if (templateId != null) {
+                predicates.add(cb.equal(root.get("template").get("id"), templateId));
+            }
+            
+            if (startDate != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("startedAt"), startDate));
+            }
+            
+            if (endDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("startedAt"), endDate));
+            }
+            
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        
+        Page<InterviewSession> sessionPage = sessionRepository.findAll(spec, pageable);
         
         List<InterviewSessionResponse> sessions = sessionPage.getContent().stream()
             .map(this::mapToResponse)

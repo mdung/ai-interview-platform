@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminApi } from '../services/api'
+import { BulkActions, Modal, useToast, LoadingSpinner, ErrorDisplay } from '../components'
 import './AdminUsers.css'
 
 interface User {
@@ -16,11 +17,13 @@ interface User {
 
 const AdminUsers = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set())
   const [editData, setEditData] = useState({
     firstName: '',
     lastName: '',
@@ -63,27 +66,36 @@ const AdminUsers = () => {
     try {
       await adminApi.updateUser(selectedUser.id, editData)
       setShowEditModal(false)
+      showToast('User updated successfully', 'success')
       loadUsers()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update user')
+      const errorMsg = err.response?.data?.message || 'Failed to update user'
+      setError(errorMsg)
+      showToast(errorMsg, 'error')
     }
   }
 
   const handleActivate = async (id: number) => {
     try {
       await adminApi.activateUser(id)
+      showToast('User activated successfully', 'success')
       loadUsers()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to activate user')
+      const errorMsg = err.response?.data?.message || 'Failed to activate user'
+      setError(errorMsg)
+      showToast(errorMsg, 'error')
     }
   }
 
   const handleDeactivate = async (id: number) => {
     try {
       await adminApi.deactivateUser(id)
+      showToast('User deactivated successfully', 'success')
       loadUsers()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to deactivate user')
+      const errorMsg = err.response?.data?.message || 'Failed to deactivate user'
+      setError(errorMsg)
+      showToast(errorMsg, 'error')
     }
   }
 
@@ -94,14 +106,78 @@ const AdminUsers = () => {
 
     try {
       await adminApi.deleteUser(id)
+      showToast('User deleted successfully', 'success')
       loadUsers()
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to delete user')
+      const errorMsg = err.response?.data?.message || 'Failed to delete user'
+      setError(errorMsg)
+      showToast(errorMsg, 'error')
+    }
+  }
+
+  const handleBulkActivate = async () => {
+    if (selectedUsers.size === 0) return
+    
+    try {
+      await Promise.all(Array.from(selectedUsers).map((id) => adminApi.activateUser(id)))
+      showToast(`${selectedUsers.size} user(s) activated`, 'success')
+      setSelectedUsers(new Set())
+      loadUsers()
+    } catch (err: any) {
+      showToast('Failed to activate users', 'error')
+    }
+  }
+
+  const handleBulkDeactivate = async () => {
+    if (selectedUsers.size === 0) return
+    
+    try {
+      await Promise.all(Array.from(selectedUsers).map((id) => adminApi.deactivateUser(id)))
+      showToast(`${selectedUsers.size} user(s) deactivated`, 'success')
+      setSelectedUsers(new Set())
+      loadUsers()
+    } catch (err: any) {
+      showToast('Failed to deactivate users', 'error')
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.size === 0) return
+    
+    try {
+      await Promise.all(Array.from(selectedUsers).map((id) => adminApi.deleteUser(id)))
+      showToast(`${selectedUsers.size} user(s) deleted`, 'success')
+      setSelectedUsers(new Set())
+      loadUsers()
+    } catch (err: any) {
+      showToast('Failed to delete users', 'error')
+    }
+  }
+
+  const toggleUserSelection = (id: number) => {
+    const newSelected = new Set(selectedUsers)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedUsers(newSelected)
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedUsers.size === users.length) {
+      setSelectedUsers(new Set())
+    } else {
+      setSelectedUsers(new Set(users.map((u) => u.id)))
     }
   }
 
   if (loading) {
-    return <div className="loading">Loading users...</div>
+    return (
+      <div className="admin-users-container">
+        <LoadingSpinner message="Loading users..." />
+      </div>
+    )
   }
 
   return (
@@ -113,12 +189,29 @@ const AdminUsers = () => {
         </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <ErrorDisplay error={error} />}
+
+      {selectedUsers.size > 0 && (
+        <BulkActions
+          selectedCount={selectedUsers.size}
+          onBulkActivate={handleBulkActivate}
+          onBulkDeactivate={handleBulkDeactivate}
+          onBulkDelete={handleBulkDelete}
+          availableActions={['activate', 'deactivate', 'delete']}
+        />
+      )}
 
       <div className="users-table-container">
         <table className="users-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.size === users.length && users.length > 0}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th>ID</th>
               <th>Name</th>
               <th>Email</th>
@@ -131,6 +224,13 @@ const AdminUsers = () => {
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedUsers.has(user.id)}
+                    onChange={() => toggleUserSelection(user.id)}
+                  />
+                </td>
                 <td>{user.id}</td>
                 <td>{user.firstName} {user.lastName}</td>
                 <td>{user.email}</td>
@@ -182,11 +282,14 @@ const AdminUsers = () => {
         </table>
       </div>
 
-      {showEditModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Edit User</h2>
-            <form onSubmit={handleUpdate}>
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit User"
+        size="small"
+      >
+        {selectedUser && (
+          <form onSubmit={handleUpdate}>
               <div className="form-group">
                 <label>First Name</label>
                 <input
@@ -230,9 +333,8 @@ const AdminUsers = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   )
 }

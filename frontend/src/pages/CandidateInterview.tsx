@@ -3,10 +3,61 @@ import { useParams } from 'react-router-dom'
 import { InterviewSession, InterviewTurn, WebSocketMessage } from '../types'
 import { interviewApi } from '../services/api'
 import { InterviewWebSocket } from '../services/websocket'
+import { AudioPlayer, useToast } from '../components'
+import { useAntiCheat } from '../hooks/useAntiCheat'
+import { useInterviewRecovery } from '../hooks/useInterviewRecovery'
+import { useConnectionMonitor } from '../hooks/useConnectionMonitor'
+import { useTabLock } from '../hooks/useTabLock'
 import './CandidateInterview.css'
 
 const CandidateInterview = () => {
   const { sessionId } = useParams<{ sessionId: string }>()
+  const { showToast } = useToast()
+  
+  // Anti-cheat monitoring
+  const {
+    activityLog,
+    tabSwitchCount,
+    interruptionCount,
+    pasteDetected,
+    handlePaste,
+    handleKeyDown,
+    reportInterruption,
+    getActivitySummary
+  } = useAntiCheat(sessionId)
+  
+  // Interview recovery (browser crash, page refresh)
+  const {
+    isRecovering,
+    recoveredState,
+    clearRecoveredState
+  } = useInterviewRecovery(sessionId)
+  
+  // Connection monitoring (network disconnection)
+  const {
+    status: connectionStatus,
+    attemptReconnect
+  } = useConnectionMonitor(
+    () => {
+      // On reconnect
+      showToast('Connection restored', 'success')
+      if (wsRef.current && !wsRef.current.isConnected()) {
+        wsRef.current.connect()
+      }
+    },
+    () => {
+      // On disconnect
+      showToast('Connection lost. Attempting to reconnect...', 'warning')
+      saveDraft() // Auto-save on disconnect
+    }
+  )
+  
+  // Tab locking (multiple tabs prevention)
+  const {
+    isActiveTab,
+    otherTabsOpen
+  } = useTabLock(sessionId)
+  
   const [session, setSession] = useState<InterviewSession | null>(null)
   const [turns, setTurns] = useState<InterviewTurn[]>([])
   const [currentQuestion, setCurrentQuestion] = useState<string>('')
@@ -21,6 +72,21 @@ const CandidateInterview = () => {
   const [micTested, setMicTested] = useState(false)
   const [micLevel, setMicLevel] = useState(0)
   const [draftSaved, setDraftSaved] = useState(false)
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
+  const [showReview, setShowReview] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [showTechnicalReport, setShowTechnicalReport] = useState(false)
+  const [showTips, setShowTips] = useState(false)
+  const [browserCompatible, setBrowserCompatible] = useState(true)
+  const [audioQuality, setAudioQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good')
+  const [aiSpeaking, setAiSpeaking] = useState(false)
+  const [feedback, setFeedback] = useState({
+    rating: 0,
+    comments: '',
+    technicalIssues: false,
+    suggestions: '',
+  })
   
   const wsRef = useRef<InterviewWebSocket | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -34,19 +100,64 @@ const CandidateInterview = () => {
   useEffect(() => {
     if (!sessionId) return
 
+    // Check browser compatibility
+    checkBrowserCompatibility()
+    
+    // Set up paste detection
+    const textarea = document.querySelector('textarea')
+    if (textarea) {
+      textarea.addEventListener('paste', handlePaste as any)
+      document.addEventListener('keydown', handleKeyDown)
+    }
+    
+    return () => {
+      if (textarea) {
+        textarea.removeEventListener('paste', handlePaste as any)
+        document.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+  }, [sessionId, handlePaste, handleKeyDown])
+  
+  // Monitor for interruptions (voice mode)
+  useEffect(() => {
+    if (aiSpeaking && isRecording && mode === 'voice') {
+      const count = reportInterruption()
+      if (count === 2) {
+        showToast('Please wait for the AI to finish speaking', 'info')
+      } else if (count === 3) {
+        showToast('Excessive interruptions may affect your communication score', 'warning')
+      } else if (count >= 4) {
+        showToast('Multiple interruptions detected. Session may be flagged for review.', 'error')
+      }
+    }
+  }, [aiSpeaking, isRecording, mode, reportInterruption, showToast])
+  
+  useEffect(() => {
+    if (!sessionId) return
+
     // Load session
     interviewApi.joinInterview(sessionId)
       .then((response) => {
         setSession(response.data)
-        // Load saved draft if exists
-        const savedDraft = localStorage.getItem(`interview_draft_${sessionId}`)
-        if (savedDraft) {
-          try {
-            const draft = JSON.parse(savedDraft)
-            setAnswer(draft.answer || '')
-            setTurns(draft.turns || [])
-          } catch (e) {
-            console.error('Failed to load draft:', e)
+        
+        // Try to recover state first (from useInterviewRecovery)
+        if (recoveredState && recoveredState.sessionId === sessionId) {
+          setAnswer(recoveredState.currentAnswer || '')
+          setTurns(recoveredState.turns || [])
+          setMode(recoveredState.mode || 'text')
+          showToast('Interview state recovered', 'info')
+          clearRecoveredState()
+        } else {
+          // Load saved draft if exists
+          const savedDraft = localStorage.getItem(`interview_draft_${sessionId}`)
+          if (savedDraft) {
+            try {
+              const draft = JSON.parse(savedDraft)
+              setAnswer(draft.answer || '')
+              setTurns(draft.turns || [])
+            } catch (e) {
+              console.error('Failed to load draft:', e)
+            }
           }
         }
       })
@@ -91,6 +202,35 @@ const CandidateInterview = () => {
     }
   }, [sessionId])
 
+  const checkBrowserCompatibility = () => {
+    const issues: string[] = []
+    
+    // Check for required APIs
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      issues.push('Microphone access not supported')
+    }
+    
+    if (!window.MediaRecorder) {
+      issues.push('Audio recording not supported')
+    }
+    
+    if (!window.WebSocket) {
+      issues.push('WebSocket not supported')
+    }
+    
+    // Check for modern browser features
+    if (!window.localStorage) {
+      issues.push('Local storage not supported')
+    }
+    
+    if (issues.length > 0) {
+      setBrowserCompatible(false)
+      showToast(`Browser compatibility issues: ${issues.join(', ')}`, 'warning')
+    } else {
+      setBrowserCompatible(true)
+    }
+  }
+
   const checkConnectionQuality = () => {
     if (!wsRef.current || !isConnected) {
       setConnectionQuality('poor')
@@ -121,13 +261,25 @@ const CandidateInterview = () => {
       ])
       // Save draft after new question
       setTimeout(() => saveDraft(), 1000)
+      
+      // If voice mode, AI is speaking
+      if (mode === 'voice') {
+        setAiSpeaking(true)
+        // Simulate AI speech duration (in real implementation, this would be based on TTS)
+        setTimeout(() => setAiSpeaking(false), 5000) // 5 seconds for example
+      }
     } else if (message.type === 'evaluation') {
       setEvaluation(message.data)
+      setShowSummary(true)
       if (sessionId) {
         interviewApi.updateSessionStatus(sessionId, 'COMPLETED')
         // Clear draft on completion
         localStorage.removeItem(`interview_draft_${sessionId}`)
       }
+    } else if (message.type === 'ai_speaking') {
+      setAiSpeaking(true)
+    } else if (message.type === 'ai_finished') {
+      setAiSpeaking(false)
     }
   }
 
@@ -161,6 +313,17 @@ const CandidateInterview = () => {
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length
         setMicLevel(average)
         
+        // Update audio quality based on mic level
+        if (average > 100) {
+          setAudioQuality('excellent')
+        } else if (average > 50) {
+          setAudioQuality('good')
+        } else if (average > 20) {
+          setAudioQuality('fair')
+        } else {
+          setAudioQuality('poor')
+        }
+        
         if (micTestStreamRef.current) {
           requestAnimationFrame(checkMicLevel)
         }
@@ -189,12 +352,37 @@ const CandidateInterview = () => {
     const draft = {
       answer,
       turns,
+      mode,
       timestamp: new Date().toISOString(),
     }
     
-    localStorage.setItem(`interview_draft_${sessionId}`, JSON.stringify(draft))
-    setDraftSaved(true)
-    setTimeout(() => setDraftSaved(false), 2000)
+    try {
+      // Try localStorage first
+      localStorage.setItem(`interview_draft_${sessionId}`, JSON.stringify(draft))
+      setDraftSaved(true)
+      setTimeout(() => setDraftSaved(false), 2000)
+    } catch (error: any) {
+      // If quota exceeded, try sessionStorage
+      if (error.name === 'QuotaExceededError') {
+        try {
+          sessionStorage.setItem(`interview_draft_${sessionId}`, JSON.stringify(draft))
+          setDraftSaved(true)
+          setTimeout(() => setDraftSaved(false), 2000)
+          showToast('Draft saved (using temporary storage)', 'info')
+        } catch (e) {
+          console.error('Failed to save draft to sessionStorage:', e)
+          // Last resort: try to send to backend immediately
+          if (wsRef.current?.isConnected()) {
+            wsRef.current.sendText({
+              type: 'save_draft',
+              text: answer,
+            })
+          }
+        }
+      } else {
+        console.error('Failed to save draft:', error)
+      }
+    }
   }
 
   const startRecording = async () => {
@@ -216,14 +404,20 @@ const CandidateInterview = () => {
 
       mediaRecorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop())
+        // Create final audio blob from chunks
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          setRecordedAudio(audioBlob)
+        }
       }
 
       mediaRecorder.start(100) // Send chunks every 100ms
       mediaRecorderRef.current = mediaRecorder
       setIsRecording(true)
+      showToast('Recording started', 'info')
     } catch (error) {
       console.error('Error starting recording:', error)
-      alert('Could not access microphone. Please check permissions.')
+      showToast('Could not access microphone. Please check permissions.', 'error')
     }
   }
 
@@ -231,26 +425,92 @@ const CandidateInterview = () => {
     if (mediaRecorderRef.current) {
       mediaRecorderRef.current.stop()
       mediaRecorderRef.current = null
-      audioChunksRef.current = []
       setIsRecording(false)
+      showToast('Recording stopped', 'info')
+      // Clear chunks after a delay to allow onstop to process
+      setTimeout(() => {
+        audioChunksRef.current = []
+      }, 100)
     }
   }
 
-  const handleTextSubmit = () => {
-    if (!answer.trim() || !wsRef.current) return
+  const handleTextSubmit = async () => {
+    if (!answer.trim() || !sessionId) return
 
-    wsRef.current.sendText({ type: 'answer', text: answer })
+    // Validate minimum length
+    if (answer.trim().length < 20) {
+      const confirmed = window.confirm(
+        'Your answer seems too short (minimum 20 characters).\n\n' +
+        'Would you like to submit anyway, or add more detail?'
+      )
+      if (!confirmed) return
+    }
+
+    // Include activity summary with answer submission
+    const activitySummary = getActivitySummary()
     
-    setTurns((prev) => {
-      const updated = [...prev]
-      if (updated.length > 0) {
-        updated[updated.length - 1].answer = answer
+    // Retry logic for answer submission
+    let retries = 3
+    let submitted = false
+    
+    while (retries > 0 && !submitted) {
+      try {
+        // Try WebSocket first if connected
+        if (wsRef.current && wsRef.current.isConnected()) {
+          wsRef.current.sendText({ 
+            type: 'answer', 
+            text: answer,
+            activityLog: activitySummary
+          })
+          submitted = true
+        } else {
+          // Fallback to API
+          const currentTurn = turns[turns.length - 1]
+          if (currentTurn?.id) {
+            await interviewApi.updateTurn(sessionId, currentTurn.id, {
+              answer: answer,
+            })
+            submitted = true
+          } else {
+            throw new Error('No active turn found')
+          }
+        }
+      } catch (error) {
+        console.error(`Answer submission failed (${retries} retries left):`, error)
+        retries--
+        
+        if (retries > 0) {
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries)))
+        } else {
+          // All retries failed, save to offline queue
+          const queue = JSON.parse(localStorage.getItem('interview_sync_queue') || '[]')
+          queue.push({
+            sessionId,
+            answer,
+            activityLog: activitySummary,
+            timestamp: Date.now(),
+            turnId: turns[turns.length - 1]?.id
+          })
+          localStorage.setItem('interview_sync_queue', JSON.stringify(queue))
+          showToast('Answer saved offline. Will sync when connection is restored.', 'info')
+        }
       }
-      return updated
-    })
+    }
     
-    setAnswer('')
-    saveDraft()
+    if (submitted) {
+      setTurns((prev) => {
+        const updated = [...prev]
+        if (updated.length > 0) {
+          updated[updated.length - 1].answer = answer
+        }
+        return updated
+      })
+      
+      setAnswer('')
+      saveDraft()
+      showToast('Answer submitted successfully', 'success')
+    }
   }
 
   const handleEndInterview = () => {
@@ -259,6 +519,27 @@ const CandidateInterview = () => {
     }
     if (sessionId) {
       localStorage.removeItem(`interview_draft_${sessionId}`)
+    }
+    setShowSummary(true)
+  }
+
+  const handleSubmitFeedback = async () => {
+    try {
+      // In real implementation, send feedback to API
+      showToast('Thank you for your feedback!', 'success')
+      setShowFeedback(false)
+    } catch (err) {
+      showToast('Failed to submit feedback', 'error')
+    }
+  }
+
+  const handleSubmitTechnicalReport = async () => {
+    try {
+      // In real implementation, send technical report to API
+      showToast('Technical issue reported. We will investigate.', 'success')
+      setShowTechnicalReport(false)
+    } catch (err) {
+      showToast('Failed to submit report', 'error')
     }
   }
 
@@ -279,12 +560,48 @@ const CandidateInterview = () => {
     return Math.min((currentQuestionNumber / estimatedTotalQuestions) * 100, 100)
   }
 
+  // Show recovery message if recovering
+  if (isRecovering) {
+    return (
+      <div className="loading">
+        <p>Recovering interview session...</p>
+        <p className="text-muted">Please wait while we restore your progress</p>
+      </div>
+    )
+  }
+
+  // Show warning if other tabs are open
+  if (otherTabsOpen && !isActiveTab) {
+    return (
+      <div className="interview-warning">
+        <h2>⚠️ Interview is open in another tab</h2>
+        <p>Please close other tabs and refresh this page to continue.</p>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Refresh Page
+        </button>
+      </div>
+    )
+  }
+
   if (!session) {
     return <div className="loading">Loading interview session...</div>
   }
 
   return (
     <div className="candidate-interview">
+      {/* Connection Status Banner */}
+      {!connectionStatus.isOnline && (
+        <div className="connection-banner warning">
+          <span>⚠️ Connection lost. Attempting to reconnect...</span>
+          <span>Attempt {connectionStatus.reconnectAttempts}/5</span>
+        </div>
+      )}
+      
+      {connectionStatus.quality === 'poor' && connectionStatus.isOnline && (
+        <div className="connection-banner info">
+          <span>⚠️ Slow connection detected. Some features may be limited.</span>
+        </div>
+      )}
       {/* Interview Instructions Modal */}
       {showInstructions && (
         <div className="instructions-modal">
@@ -324,7 +641,7 @@ const CandidateInterview = () => {
             </span>
           </div>
         </div>
-        <div className="header-right">
+          <div className="header-right">
           <div className="status-indicators">
             <div className="status-indicator">
               <span className={`connection-status ${connectionQuality}`}>
@@ -334,17 +651,75 @@ const CandidateInterview = () => {
                 {connectionQuality === 'poor' && '○ Poor'}
               </span>
             </div>
+            {mode === 'voice' && (
+              <div className="status-indicator">
+                <span className={`audio-quality ${audioQuality}`}>
+                  🎤 {audioQuality.charAt(0).toUpperCase() + audioQuality.slice(1)}
+                </span>
+              </div>
+            )}
             <div className="status-indicator">
               <span className={isConnected ? 'connected' : 'disconnected'}>
                 {isConnected ? '● Connected' : '○ Disconnected'}
               </span>
             </div>
+            {!browserCompatible && (
+              <div className="status-indicator warning">
+                ⚠️ Browser Compatibility Issues
+              </div>
+            )}
             {draftSaved && (
               <span className="draft-saved-indicator">💾 Draft saved</span>
             )}
           </div>
+          <div className="header-actions">
+            <button
+              className="btn btn-small btn-secondary"
+              onClick={() => setShowTips(!showTips)}
+            >
+              💡 Tips
+            </button>
+            {turns.length > 0 && (
+              <button
+                className="btn btn-small btn-secondary"
+                onClick={() => setShowReview(!showReview)}
+              >
+                📋 Review Answers
+              </button>
+            )}
+            <button
+              className="btn btn-small btn-secondary"
+              onClick={() => setShowTechnicalReport(true)}
+            >
+              🛠️ Report Issue
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Interview Tips Panel */}
+      {showTips && (
+        <div className="tips-panel">
+          <div className="tips-header">
+            <h3>💡 Interview Tips</h3>
+            <button className="btn btn-small btn-secondary" onClick={() => setShowTips(false)}>
+              ×
+            </button>
+          </div>
+          <div className="tips-content">
+            <ul>
+              <li><strong>Be Clear and Concise:</strong> Provide specific examples from your experience</li>
+              <li><strong>Take Your Time:</strong> It's okay to pause and think before answering</li>
+              <li><strong>Stay Calm:</strong> Take deep breaths if you feel nervous</li>
+              <li><strong>Ask for Clarification:</strong> If a question is unclear, ask for clarification</li>
+              <li><strong>Be Honest:</strong> Authenticity is valued over perfection</li>
+              <li><strong>Use the STAR Method:</strong> Situation, Task, Action, Result</li>
+              <li><strong>Test Your Equipment:</strong> Ensure microphone and internet connection work well</li>
+              <li><strong>Save Your Work:</strong> Your answers are auto-saved, but you can manually save drafts</li>
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="progress-section">
@@ -360,6 +735,38 @@ const CandidateInterview = () => {
       </div>
 
       <div className="interview-container">
+        {/* Review Answers Panel */}
+        {showReview && (
+          <div className="review-panel">
+            <div className="review-header">
+              <h3>📋 Review Your Answers</h3>
+              <button className="btn btn-small btn-secondary" onClick={() => setShowReview(false)}>
+                ×
+              </button>
+            </div>
+            <div className="review-content">
+              {turns.filter(t => t.answer).length === 0 ? (
+                <p className="empty-state">No answers to review yet.</p>
+              ) : (
+                <div className="review-list">
+                  {turns
+                    .filter((turn) => turn.answer)
+                    .map((turn, index) => (
+                      <div key={index} className="review-item">
+                        <div className="review-question">
+                          <strong>Q{index + 1}:</strong> {turn.question}
+                        </div>
+                        <div className="review-answer">
+                          <strong>Your Answer:</strong> {turn.answer}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="conversation-panel">
           <div className="turns-list">
             {turns.map((turn, index) => (
@@ -460,15 +867,35 @@ const CandidateInterview = () => {
                     handleTextSubmit()
                   }
                 }}
+                aria-label="Answer input"
+                aria-describedby="answer-hint"
               />
+              <p id="answer-hint" className="sr-only">
+                Type your answer and press Ctrl+Enter to submit, or click the Send Answer button
+              </p>
               <div className="text-input-actions">
-                <button className="btn btn-primary" onClick={handleTextSubmit}>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleTextSubmit}
+                  aria-label="Send answer"
+                >
                   Send Answer
                 </button>
-                <button className="btn btn-secondary" onClick={saveDraft}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={saveDraft}
+                  aria-label="Save draft manually"
+                >
                   💾 Save Draft
                 </button>
               </div>
+            </div>
+          )}
+
+          {recordedAudio && (
+            <div className="recorded-audio-section">
+              <h4>Recorded Audio</h4>
+              <AudioPlayer audioBlob={recordedAudio} />
             </div>
           )}
 
@@ -492,6 +919,199 @@ const CandidateInterview = () => {
           </button>
         </div>
       </div>
+
+      {/* Interview Summary Modal */}
+      {showSummary && (
+        <div className="summary-modal">
+          <div className="summary-content">
+            <div className="summary-header">
+              <h2>Interview Complete! 🎉</h2>
+              <button className="btn btn-small btn-secondary" onClick={() => setShowSummary(false)}>
+                ×
+              </button>
+            </div>
+            <div className="summary-body">
+              {evaluation ? (
+                <div className="evaluation-summary">
+                  <h3>Interview Evaluation</h3>
+                  <div className="summary-section">
+                    <p><strong>Summary:</strong> {evaluation.summary}</p>
+                  </div>
+                  {evaluation.strengths && (
+                    <div className="summary-section">
+                      <p><strong>Strengths:</strong> {evaluation.strengths}</p>
+                    </div>
+                  )}
+                  {evaluation.weaknesses && (
+                    <div className="summary-section">
+                      <p><strong>Areas for Improvement:</strong> {evaluation.weaknesses}</p>
+                    </div>
+                  )}
+                  {evaluation.recommendation && (
+                    <div className="summary-section">
+                      <p><strong>Recommendation:</strong> {evaluation.recommendation}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="summary-section">
+                  <p>Your interview has been completed. The evaluation will be available soon.</p>
+                </div>
+              )}
+              <div className="summary-stats">
+                <div className="stat-item">
+                  <strong>Total Questions:</strong> {turns.length}
+                </div>
+                <div className="stat-item">
+                  <strong>Duration:</strong> {formatTime(elapsedTime)}
+                </div>
+              </div>
+              <div className="summary-actions">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setShowSummary(false)
+                    setShowFeedback(true)
+                  }}
+                >
+                  Provide Feedback
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowSummary(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Form Modal */}
+      {showFeedback && (
+        <div className="feedback-modal">
+          <div className="feedback-content">
+            <div className="feedback-header">
+              <h2>Interview Feedback</h2>
+              <button className="btn btn-small btn-secondary" onClick={() => setShowFeedback(false)}>
+                ×
+              </button>
+            </div>
+            <div className="feedback-body">
+              <div className="form-group">
+                <label>Overall Rating</label>
+                <div className="rating-buttons">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      type="button"
+                      className={`rating-btn ${feedback.rating === rating ? 'active' : ''}`}
+                      onClick={() => setFeedback({ ...feedback, rating })}
+                    >
+                      ⭐
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Comments</label>
+                <textarea
+                  className="input"
+                  rows={4}
+                  value={feedback.comments}
+                  onChange={(e) => setFeedback({ ...feedback, comments: e.target.value })}
+                  placeholder="Share your thoughts about the interview experience..."
+                />
+              </div>
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={feedback.technicalIssues}
+                    onChange={(e) =>
+                      setFeedback({ ...feedback, technicalIssues: e.target.checked })
+                    }
+                  />
+                  I experienced technical issues during the interview
+                </label>
+              </div>
+              <div className="form-group">
+                <label>Suggestions for Improvement</label>
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={feedback.suggestions}
+                  onChange={(e) => setFeedback({ ...feedback, suggestions: e.target.value })}
+                  placeholder="Any suggestions to improve the interview experience..."
+                />
+              </div>
+              <div className="feedback-actions">
+                <button className="btn btn-primary" onClick={handleSubmitFeedback}>
+                  Submit Feedback
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowFeedback(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Technical Issues Report Modal */}
+      {showTechnicalReport && (
+        <div className="technical-report-modal">
+          <div className="technical-report-content">
+            <div className="technical-report-header">
+              <h2>Report Technical Issue</h2>
+              <button
+                className="btn btn-small btn-secondary"
+                onClick={() => setShowTechnicalReport(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="technical-report-body">
+              <div className="form-group">
+                <label>Issue Type</label>
+                <select className="input">
+                  <option>Audio/Video Problems</option>
+                  <option>Connection Issues</option>
+                  <option>Browser Compatibility</option>
+                  <option>Recording Problems</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  className="input"
+                  rows={5}
+                  placeholder="Please describe the technical issue you encountered..."
+                />
+              </div>
+              <div className="form-group">
+                <label>Browser Information</label>
+                <input
+                  type="text"
+                  className="input"
+                  readOnly
+                  value={`${navigator.userAgent}`}
+                />
+              </div>
+              <div className="technical-report-actions">
+                <button className="btn btn-primary" onClick={handleSubmitTechnicalReport}>
+                  Submit Report
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowTechnicalReport(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

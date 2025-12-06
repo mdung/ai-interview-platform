@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { authApi } from '../services/api'
+import { useAuthStore } from '../store/authStore'
 import './Login.css'
 
 const Login = () => {
@@ -8,6 +9,7 @@ const Login = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const login = useAuthStore((state) => state.login)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -15,8 +17,18 @@ const Login = () => {
 
     try {
       const response = await authApi.login(email, password)
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('user', JSON.stringify(response.data))
+      
+      // Update auth store
+      login(
+        {
+          id: response.data.id,
+          email: response.data.email,
+          firstName: response.data.firstName,
+          lastName: response.data.lastName,
+          role: response.data.role,
+        },
+        response.data.token
+      )
       
       // Navigate based on role
       if (response.data.role === 'RECRUITER' || response.data.role === 'ADMIN') {
