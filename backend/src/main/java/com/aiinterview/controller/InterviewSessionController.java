@@ -28,6 +28,7 @@ public class InterviewSessionController {
     private final InterviewTurnService turnService;
     private final TranscriptService transcriptService;
     private final ExportService exportService;
+    private final com.aiinterview.service.AntiCheatService antiCheatService;
     
     @PostMapping("/sessions")
     public ResponseEntity<InterviewSessionResponse> createSession(
@@ -85,6 +86,23 @@ public class InterviewSessionController {
         return ResponseEntity.ok(turns);
     }
     
+    @PostMapping("/sessions/{sessionId}/turns")
+    public ResponseEntity<InterviewTurnResponse> createTurn(
+            @PathVariable String sessionId,
+            @Valid @RequestBody CreateTurnRequest request) {
+        InterviewTurnResponse response = turnService.createTurn(sessionId, request);
+        return ResponseEntity.ok(response);
+    }
+    
+    @PutMapping("/sessions/{sessionId}/turns/{turnId}")
+    public ResponseEntity<InterviewTurnResponse> updateTurn(
+            @PathVariable String sessionId,
+            @PathVariable Long turnId,
+            @Valid @RequestBody UpdateTurnRequest request) {
+        InterviewTurnResponse response = turnService.updateTurn(sessionId, turnId, request);
+        return ResponseEntity.ok(response);
+    }
+    
     @GetMapping("/sessions/{sessionId}/transcript")
     public ResponseEntity<TranscriptResponse> getTranscript(@PathVariable String sessionId) {
         TranscriptResponse transcript = transcriptService.getTranscript(sessionId);
@@ -137,9 +155,61 @@ public class InterviewSessionController {
     
     @GetMapping("/sessions/{sessionId}/audio")
     public ResponseEntity<byte[]> downloadAudio(@PathVariable String sessionId) {
-        // TODO: Implement audio file retrieval
-        // For now, return empty response
+        // Get the session to find audio URL
+        InterviewSessionResponse session = sessionService.getSessionBySessionId(sessionId);
+        
+        // Get all turns for the session to find audio URLs
+        List<InterviewTurnResponse> turns = turnService.getTurnsBySessionIdString(sessionId);
+        
+        // For now, return the first turn's audio if available
+        // In a real implementation, you would:
+        // 1. Combine all turn audio files into one
+        // 2. Or return a list of audio URLs
+        // 3. Or stream the audio from storage (S3, filesystem, etc.)
+        
+        if (turns.isEmpty() || turns.get(0).getAudioUrl() == null) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        // TODO: Implement actual audio file retrieval from storage
+        // This is a placeholder - in production, you would:
+        // - Retrieve audio file from S3/filesystem based on audioUrl
+        // - Return the audio bytes with proper content type
         return ResponseEntity.notFound().build();
+    }
+    
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> deleteSession(@PathVariable String sessionId) {
+        sessionService.deleteSession(sessionId);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @PostMapping("/sessions/{sessionId}/send-link")
+    public ResponseEntity<Void> sendInterviewLink(@PathVariable String sessionId) {
+        InterviewSessionResponse session = sessionService.getSessionBySessionId(sessionId);
+        
+        // Get candidate email from session
+        // In a real implementation, you would:
+        // 1. Get candidate from session
+        // 2. Generate interview link
+        // 3. Send email with link via EmailService
+        
+        // For now, this is a placeholder
+        // emailService.sendInterviewInvitation(candidate, session);
+        
+        return ResponseEntity.ok().build();
+    }
+    
+    @PostMapping("/sessions/{sessionId}/report-activity")
+    public ResponseEntity<Void> reportSuspiciousActivity(
+            @PathVariable String sessionId,
+            @RequestBody SuspiciousActivityRequest request) {
+        antiCheatService.reportSuspiciousActivity(
+            sessionId,
+            request.getActivityType(),
+            request.getMetadata()
+        );
+        return ResponseEntity.ok().build();
     }
 }
 

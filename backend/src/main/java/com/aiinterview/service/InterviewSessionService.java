@@ -31,6 +31,8 @@ public class InterviewSessionService {
     private final CandidateRepository candidateRepository;
     private final InterviewTemplateRepository templateRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    @org.springframework.context.annotation.Lazy
+    private final WebSocketService webSocketService;
     
     @Transactional
     public InterviewSessionResponse createSession(CreateInterviewSessionRequest request) {
@@ -42,13 +44,21 @@ public class InterviewSessionService {
         
         String sessionId = UUID.randomUUID().toString();
         
+        InterviewSession.SessionStatus initialStatus = request.getScheduledAt() != null && 
+            request.getScheduledAt().isAfter(LocalDateTime.now())
+            ? InterviewSession.SessionStatus.PENDING
+            : InterviewSession.SessionStatus.PENDING;
+        
         InterviewSession session = InterviewSession.builder()
             .sessionId(sessionId)
             .candidate(candidate)
             .template(template)
-            .status(InterviewSession.SessionStatus.PENDING)
+            .status(initialStatus)
             .language(request.getLanguage())
-            .startedAt(LocalDateTime.now())
+            .startedAt(request.getScheduledAt() != null && request.getScheduledAt().isAfter(LocalDateTime.now()) 
+                ? request.getScheduledAt() 
+                : LocalDateTime.now())
+            .scheduledAt(request.getScheduledAt())
             .totalTurns(0)
             .build();
         
@@ -82,7 +92,17 @@ public class InterviewSessionService {
         }
         
         session = sessionRepository.save(session);
-        return mapToResponse(session);
+        InterviewSessionResponse response = mapToResponse(session);
+        
+        // Broadcast session update via WebSocket
+        try {
+            webSocketService.broadcastSessionUpdate(sessionId, response);
+        } catch (Exception e) {
+            // Log but don't fail if WebSocket is unavailable
+            System.err.println("Failed to broadcast session update: " + e.getMessage());
+        }
+        
+        return response;
     }
     
     public SessionListResponse getAllSessions(
@@ -159,6 +179,23 @@ public class InterviewSessionService {
         
         session = sessionRepository.save(session);
         return mapToResponse(session);
+    }
+    
+    @Transactional
+    public void deleteSession(String sessionId) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        // Delete session state from Redis if exists
+        try {
+            redisTemplate.delete("session:" + sessionId);
+        } catch (Exception e) {
+            // Log but don't fail if Redis is unavailable
+            System.err.println("Failed to delete session from Redis: " + e.getMessage());
+        }
+        
+        // Delete the session (cascade will handle related turns if configured)
+        sessionRepository.delete(session);
     }
     
     private InterviewSessionResponse mapToResponse(InterviewSession session) {

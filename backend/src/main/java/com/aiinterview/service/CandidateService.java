@@ -97,6 +97,43 @@ public class CandidateService {
         candidateRepository.deleteAllById(candidateIds);
     }
     
+    @Transactional
+    public void deleteCandidate(Long id) {
+        Candidate candidate = getCandidateById(id);
+        candidateRepository.delete(candidate);
+    }
+    
+    public List<com.aiinterview.dto.InterviewSessionResponse> getCandidateInterviews(Long candidateId) {
+        // Verify candidate exists
+        getCandidateById(candidateId);
+        
+        // Get all sessions for this candidate
+        List<com.aiinterview.model.InterviewSession> sessions = sessionRepository.findByCandidate_Id(candidateId);
+        
+        // Map to response DTOs
+        return sessions.stream()
+            .map(session -> {
+                return com.aiinterview.dto.InterviewSessionResponse.builder()
+                    .id(session.getId())
+                    .sessionId(session.getSessionId())
+                    .candidateId(session.getCandidate().getId())
+                    .candidateName(session.getCandidate().getFirstName() + " " + session.getCandidate().getLastName())
+                    .templateId(session.getTemplate().getId())
+                    .templateName(session.getTemplate().getName())
+                    .status(session.getStatus())
+                    .language(session.getLanguage())
+                    .startedAt(session.getStartedAt())
+                    .completedAt(session.getCompletedAt())
+                    .aiSummary(session.getAiSummary())
+                    .strengths(session.getStrengths())
+                    .weaknesses(session.getWeaknesses())
+                    .recommendation(session.getRecommendation())
+                    .totalTurns(session.getTotalTurns())
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+    
     public CandidateStatisticsResponse getCandidateStatistics() {
         long totalCandidates = candidateRepository.count();
         long candidatesWithResumes = candidateRepository.findAll().stream()

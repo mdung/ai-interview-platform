@@ -37,8 +37,8 @@ public class JobController {
     
     @GetMapping("/{id}/candidates")
     public ResponseEntity<List<com.aiinterview.dto.InterviewSessionResponse>> getJobCandidates(@PathVariable Long id) {
-        // This would need a service method to get candidates/interviews for a job
-        return ResponseEntity.ok(List.of());
+        List<com.aiinterview.dto.InterviewSessionResponse> candidates = jobService.getJobCandidates(id);
+        return ResponseEntity.ok(candidates);
     }
     
     @PostMapping
@@ -73,6 +73,24 @@ public class JobController {
     public ResponseEntity<JobStatisticsResponse> getJobStatistics() {
         JobStatisticsResponse statistics = jobService.getJobStatistics();
         return ResponseEntity.ok(statistics);
+    }
+    
+    @GetMapping("/{id}/statistics")
+    public ResponseEntity<JobStatisticsResponse> getJobStatisticsById(@PathVariable Long id) {
+        JobStatisticsResponse statistics = jobService.getJobStatisticsById(id);
+        return ResponseEntity.ok(statistics);
+    }
+    
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<Job> publishJob(@PathVariable Long id) {
+        Job job = jobService.publishJob(id);
+        return ResponseEntity.ok(job);
+    }
+    
+    @PostMapping("/{id}/unpublish")
+    public ResponseEntity<Job> unpublishJob(@PathVariable Long id) {
+        Job job = jobService.unpublishJob(id);
+        return ResponseEntity.ok(job);
     }
 }
 

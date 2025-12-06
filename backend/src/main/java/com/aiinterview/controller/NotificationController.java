@@ -88,6 +88,19 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
     
+    @PostMapping("/send")
+    public ResponseEntity<NotificationResponse> sendNotification(
+            @RequestBody com.aiinterview.dto.SendNotificationRequest request) {
+        Notification notification = notificationService.sendNotification(
+            request.getTitle(),
+            request.getMessage(),
+            request.getType(),
+            request.getActionUrl(),
+            request.getUserId()
+        );
+        return ResponseEntity.ok(mapToResponse(notification));
+    }
+    
     private NotificationResponse mapToResponse(Notification notification) {
         return NotificationResponse.builder()
             .id(notification.getId())

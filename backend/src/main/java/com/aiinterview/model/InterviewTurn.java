@@ -56,6 +56,7 @@ public class InterviewTurn {
     private Double clarityScore;
     
     @Column(nullable = false)
+    @Builder.Default
     private Boolean hasAntiCheatSignal = false;
     
     @Column(length = 500)

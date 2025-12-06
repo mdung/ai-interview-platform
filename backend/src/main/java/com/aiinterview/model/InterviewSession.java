@@ -45,6 +45,8 @@ public class InterviewSession {
     @Column(nullable = false)
     private LocalDateTime startedAt;
     
+    private LocalDateTime scheduledAt;
+    
     private LocalDateTime completedAt;
     
     @Column(length = 5000)

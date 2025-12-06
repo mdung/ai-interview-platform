@@ -1,6 +1,8 @@
 package com.aiinterview.service;
 
+import com.aiinterview.dto.CreateTurnRequest;
 import com.aiinterview.dto.InterviewTurnResponse;
+import com.aiinterview.dto.UpdateTurnRequest;
 import com.aiinterview.model.InterviewSession;
 import com.aiinterview.model.InterviewTurn;
 import com.aiinterview.repository.InterviewSessionRepository;
@@ -91,6 +93,86 @@ public class InterviewTurnService {
         turn.setAnswerDurationMs(durationMs);
         
         return turnRepository.save(turn);
+    }
+    
+    @Transactional
+    public InterviewTurnResponse createTurn(String sessionId, CreateTurnRequest request) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        List<InterviewTurn> existingTurns = getTurnsBySessionId(session.getId());
+        int turnNumber = existingTurns.size() + 1;
+        
+        InterviewTurn turn = InterviewTurn.builder()
+            .session(session)
+            .turnNumber(turnNumber)
+            .question(request.getQuestion())
+            .answer(request.getAnswer())
+            .questionTimestamp(LocalDateTime.now())
+            .answerTimestamp(request.getAnswer() != null ? LocalDateTime.now() : null)
+            .answerDurationMs(request.getAnswerDurationMs())
+            .audioUrl(request.getAudioUrl())
+            .build();
+        
+        turn = turnRepository.save(turn);
+        
+        // Update session turn count
+        session.setTotalTurns(turnNumber);
+        sessionRepository.save(session);
+        
+        return mapToResponse(turn);
+    }
+    
+    @Transactional
+    public InterviewTurnResponse updateTurn(String sessionId, Long turnId, UpdateTurnRequest request) {
+        InterviewSession session = sessionRepository.findBySessionId(sessionId)
+            .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        InterviewTurn turn = turnRepository.findById(turnId)
+            .orElseThrow(() -> new RuntimeException("Turn not found"));
+        
+        // Verify turn belongs to session
+        if (!turn.getSession().getId().equals(session.getId())) {
+            throw new RuntimeException("Turn does not belong to this session");
+        }
+        
+        // Update fields if provided
+        if (request.getQuestion() != null) {
+            turn.setQuestion(request.getQuestion());
+        }
+        if (request.getAnswer() != null) {
+            turn.setAnswer(request.getAnswer());
+            if (turn.getAnswerTimestamp() == null) {
+                turn.setAnswerTimestamp(LocalDateTime.now());
+            }
+        }
+        if (request.getAnswerDurationMs() != null) {
+            turn.setAnswerDurationMs(request.getAnswerDurationMs());
+        }
+        if (request.getAudioUrl() != null) {
+            turn.setAudioUrl(request.getAudioUrl());
+        }
+        if (request.getAiComment() != null) {
+            turn.setAiComment(request.getAiComment());
+        }
+        if (request.getCommunicationScore() != null) {
+            turn.setCommunicationScore(request.getCommunicationScore());
+        }
+        if (request.getTechnicalScore() != null) {
+            turn.setTechnicalScore(request.getTechnicalScore());
+        }
+        if (request.getClarityScore() != null) {
+            turn.setClarityScore(request.getClarityScore());
+        }
+        if (request.getHasAntiCheatSignal() != null) {
+            turn.setHasAntiCheatSignal(request.getHasAntiCheatSignal());
+        }
+        if (request.getAntiCheatDetails() != null) {
+            turn.setAntiCheatDetails(request.getAntiCheatDetails());
+        }
+        
+        turn = turnRepository.save(turn);
+        return mapToResponse(turn);
     }
 }
 

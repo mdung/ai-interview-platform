@@ -1,9 +1,12 @@
 package com.aiinterview.service;
 
 import com.aiinterview.model.InterviewSession;
+import com.aiinterview.model.User;
 import com.aiinterview.repository.InterviewSessionRepository;
+import com.aiinterview.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +22,8 @@ public class BackgroundJobService {
     private final InterviewSessionRepository sessionRepository;
     private final EmailService emailService;
     private final NotificationService notificationService;
+    private final ReportService reportService;
+    private final UserRepository userRepository;
     
     /**
      * Clean up old abandoned sessions (runs daily at 2 AM)
@@ -59,17 +64,26 @@ public class BackgroundJobService {
             .toList();
         
         for (InterviewSession session : upcomingSessions) {
-            try {
-                emailService.sendInterviewReminder(session.getCandidate(), session);
-                notificationService.sendInterviewNotification(
-                    session.getCandidate().getUser() != null ? session.getCandidate().getUser().getId() : null,
-                    session.getSessionId(),
-                    com.aiinterview.model.Notification.NotificationType.INTERVIEW_REMINDER
-                );
-                log.info("Sent reminder for session: {}", session.getSessionId());
-            } catch (Exception e) {
-                log.error("Failed to send reminder for session: {}", session.getSessionId(), e);
-            }
+            // Send reminder asynchronously
+            sendInterviewReminderAsync(session);
+        }
+    }
+    
+    /**
+     * Async method to send interview reminder
+     */
+    @Async("emailExecutor")
+    public void sendInterviewReminderAsync(InterviewSession session) {
+        try {
+            emailService.sendInterviewReminder(session.getCandidate(), session);
+            notificationService.sendInterviewNotification(
+                session.getCandidate().getUser() != null ? session.getCandidate().getUser().getId() : null,
+                session.getSessionId(),
+                com.aiinterview.model.Notification.NotificationType.INTERVIEW_REMINDER
+            );
+            log.info("Sent reminder for session: {}", session.getSessionId());
+        } catch (Exception e) {
+            log.error("Failed to send reminder for session: {}", session.getSessionId(), e);
         }
     }
     
@@ -93,8 +107,40 @@ public class BackgroundJobService {
     public void generateDailyReports() {
         log.info("Generating daily reports");
         
-        // This would generate and email daily reports to admins
-        // Implementation depends on your reporting requirements
+        // Get all admin users
+        List<User> adminUsers = userRepository.findAll().stream()
+            .filter(u -> u.getRole() == User.Role.ADMIN)
+            .toList();
+        
+        // Generate and send reports asynchronously
+        for (User admin : adminUsers) {
+            generateAndSendReportAsync(admin);
+        }
+    }
+    
+    /**
+     * Async method to generate and send report
+     */
+    @Async("reportExecutor")
+    public void generateAndSendReportAsync(User admin) {
+        try {
+            log.info("Generating report for admin: {}", admin.getEmail());
+            
+            // Generate dashboard report
+            byte[] pdfBytes = reportService.generateDashboardReport();
+            
+            // Send email with report attachment
+            String subject = "Daily Dashboard Report - " + LocalDateTime.now().toLocalDate();
+            String body = "Please find attached the daily dashboard report.";
+            
+            // Note: In production, you would attach the PDF to the email
+            // For now, we'll just send a notification
+            emailService.sendSimpleEmail(admin.getEmail(), subject, body);
+            
+            log.info("Report generated and sent to admin: {}", admin.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to generate and send report for admin: {}", admin.getEmail(), e);
+        }
     }
     
     /**

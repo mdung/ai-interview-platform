@@ -21,6 +21,8 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    @org.springframework.context.annotation.Lazy
+    private final WebSocketService webSocketService;
     
     @Transactional
     public Notification createNotification(Long userId, String title, String message, 
@@ -40,7 +42,7 @@ public class NotificationService {
         
         notification = notificationRepository.save(notification);
         
-        // Send email notification if user has email
+        // Send email notification if user has email (async)
         try {
             emailService.sendSimpleEmail(
                 user.getEmail(),
@@ -52,7 +54,30 @@ public class NotificationService {
             notification.setStatus(Notification.NotificationStatus.FAILED);
         }
         
-        return notificationRepository.save(notification);
+        notification = notificationRepository.save(notification);
+        
+        // Send real-time notification via WebSocket
+        try {
+            com.aiinterview.dto.NotificationResponse notificationResponse = 
+                com.aiinterview.dto.NotificationResponse.builder()
+                    .id(notification.getId())
+                    .title(notification.getTitle())
+                    .message(notification.getMessage())
+                    .type(notification.getType())
+                    .status(notification.getStatus())
+                    .actionUrl(notification.getActionUrl())
+                    .read(notification.getRead())
+                    .createdAt(notification.getCreatedAt())
+                    .readAt(notification.getReadAt())
+                    .build();
+            
+            webSocketService.sendNotificationToUser(userId, notificationResponse);
+        } catch (Exception e) {
+            // Log but don't fail if WebSocket is unavailable
+            System.err.println("Failed to send WebSocket notification: " + e.getMessage());
+        }
+        
+        return notification;
     }
     
     public List<Notification> getUserNotifications(Long userId) {
@@ -125,6 +150,38 @@ public class NotificationService {
         }
         
         createNotification(userId, title, message, type, actionUrl);
+    }
+    
+    @Transactional
+    public Notification sendNotification(String title, String message, String type, 
+                                        String actionUrl, Long userId) {
+        Notification.NotificationType notificationType = Notification.NotificationType.SYSTEM;
+        if (type != null) {
+            try {
+                notificationType = Notification.NotificationType.valueOf(type.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // Default to SYSTEM if invalid type
+            }
+        }
+        
+        if (userId != null) {
+            // Send to specific user
+            return createNotification(userId, title, message, notificationType, actionUrl);
+        } else {
+            // Send to all users (broadcast)
+            List<User> allUsers = userRepository.findAll();
+            Notification firstNotification = null;
+            for (User user : allUsers) {
+                Notification notification = createNotification(
+                    user.getId(), title, message, notificationType, actionUrl
+                );
+                if (firstNotification == null) {
+                    firstNotification = notification;
+                }
+            }
+            return firstNotification != null ? firstNotification : 
+                Notification.builder().title(title).message(message).build();
+        }
     }
 }
 

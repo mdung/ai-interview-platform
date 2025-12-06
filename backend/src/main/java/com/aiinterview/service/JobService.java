@@ -130,5 +130,86 @@ public class JobService {
             .averageInterviewsPerJob(averageInterviewsPerJob)
             .build();
     }
+    
+    public JobStatisticsResponse getJobStatisticsById(Long jobId) {
+        Job job = getJobById(jobId);
+        
+        // Get all sessions for this job (through templates)
+        List<com.aiinterview.model.InterviewSession> jobSessions = sessionRepository.findAll().stream()
+            .filter(session -> session.getTemplate().getJob() != null && 
+                             session.getTemplate().getJob().getId().equals(jobId))
+            .collect(Collectors.toList());
+        
+        long totalCandidates = jobSessions.stream()
+            .map(s -> s.getCandidate().getId())
+            .distinct()
+            .count();
+        
+        long totalInterviews = jobSessions.size();
+        
+        double averageInterviewsPerJob = totalCandidates > 0 
+            ? (double) totalInterviews / totalCandidates 
+            : 0.0;
+        
+        Map<String, Long> jobsBySeniority = new HashMap<>();
+        jobsBySeniority.put(job.getSeniorityLevel().name(), 1L);
+        
+        return JobStatisticsResponse.builder()
+            .totalJobs(1L)
+            .activeJobs(job.getActive() ? 1L : 0L)
+            .totalCandidates(totalCandidates)
+            .totalInterviews(totalInterviews)
+            .jobsBySeniorityLevel(jobsBySeniority)
+            .averageInterviewsPerJob(averageInterviewsPerJob)
+            .build();
+    }
+    
+    public List<com.aiinterview.dto.InterviewSessionResponse> getJobCandidates(Long jobId) {
+        // Verify job exists
+        getJobById(jobId);
+        
+        // Get all sessions for this job (through templates)
+        List<com.aiinterview.model.InterviewSession> sessions = sessionRepository.findAll().stream()
+            .filter(session -> session.getTemplate().getJob() != null && 
+                             session.getTemplate().getJob().getId().equals(jobId))
+            .collect(Collectors.toList());
+        
+        // Map to response DTOs
+        return sessions.stream()
+            .map(session -> {
+                return com.aiinterview.dto.InterviewSessionResponse.builder()
+                    .id(session.getId())
+                    .sessionId(session.getSessionId())
+                    .candidateId(session.getCandidate().getId())
+                    .candidateName(session.getCandidate().getFirstName() + " " + session.getCandidate().getLastName())
+                    .templateId(session.getTemplate().getId())
+                    .templateName(session.getTemplate().getName())
+                    .status(session.getStatus())
+                    .language(session.getLanguage())
+                    .startedAt(session.getStartedAt())
+                    .completedAt(session.getCompletedAt())
+                    .aiSummary(session.getAiSummary())
+                    .strengths(session.getStrengths())
+                    .weaknesses(session.getWeaknesses())
+                    .recommendation(session.getRecommendation())
+                    .totalTurns(session.getTotalTurns())
+                    .build();
+            })
+            .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public Job publishJob(Long id) {
+        Job job = getJobById(id);
+        job.setActive(true);
+        return jobRepository.save(job);
+    }
+    
+    @Transactional
+    public Job unpublishJob(Long id) {
+        Job job = getJobById(id);
+        job.setActive(false);
+        return jobRepository.save(job);
+    }
 }
 

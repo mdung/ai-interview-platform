@@ -46,8 +46,8 @@ public class CandidateController {
     
     @GetMapping("/recruiter/candidates/{id}/interviews")
     public ResponseEntity<List<InterviewSessionResponse>> getCandidateInterviews(@PathVariable Long id) {
-        // This would need a service method to get interviews by candidate
-        return ResponseEntity.ok(List.of());
+        List<InterviewSessionResponse> interviews = candidateService.getCandidateInterviews(id);
+        return ResponseEntity.ok(interviews);
     }
     
     @PostMapping("/recruiter/candidates")
@@ -65,6 +65,12 @@ public class CandidateController {
     @DeleteMapping("/recruiter/candidates/bulk")
     public ResponseEntity<Void> bulkDeleteCandidates(@RequestBody List<Long> candidateIds) {
         candidateService.bulkDeleteCandidates(candidateIds);
+        return ResponseEntity.noContent().build();
+    }
+    
+    @DeleteMapping("/recruiter/candidates/{id}")
+    public ResponseEntity<Void> deleteCandidate(@PathVariable Long id) {
+        candidateService.deleteCandidate(id);
         return ResponseEntity.noContent().build();
     }
     

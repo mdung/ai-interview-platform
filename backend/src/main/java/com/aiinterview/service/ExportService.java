@@ -1,6 +1,7 @@
 package com.aiinterview.service;
 
 import com.aiinterview.dto.TranscriptResponse;
+import com.aiinterview.dto.InterviewTurnResponse;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;

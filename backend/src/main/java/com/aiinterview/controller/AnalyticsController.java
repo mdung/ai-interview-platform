@@ -38,6 +38,12 @@ public class AnalyticsController {
         return ResponseEntity.ok(analytics);
     }
     
+    @GetMapping("/jobs")
+    public ResponseEntity<JobStatisticsResponse> getJobAnalytics() {
+        JobStatisticsResponse analytics = analyticsService.getJobAnalytics();
+        return ResponseEntity.ok(analytics);
+    }
+    
     @GetMapping("/trends")
     public ResponseEntity<TrendAnalysisResponse> getTrendAnalysis(
             @RequestParam(defaultValue = "interviews") String metric,

@@ -34,8 +34,25 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/candidates/join/**").permitAll()
+                // Public endpoints
+                .requestMatchers("/api/auth/login", 
+                                 "/api/auth/register", 
+                                 "/api/auth/forgot-password", 
+                                 "/api/auth/reset-password", 
+                                 "/api/auth/refresh-token",
+                                 "/api/candidates/join/**",
+                                 "/api/health").permitAll() // Health check endpoint
+                // Actuator endpoints (for monitoring)
+                .requestMatchers("/actuator/**").permitAll()
+                // WebSocket endpoints
+                .requestMatchers("/ws/**").permitAll() // WebSocket connections handled separately
+                // Authenticated endpoints
+                .requestMatchers("/api/auth/me", 
+                                 "/api/auth/profile", 
+                                 "/api/auth/change-password").authenticated()
+                // Admin endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Recruiter endpoints
                 .requestMatchers("/api/recruiter/**").hasAnyRole("ADMIN", "RECRUITER")
                 .anyRequest().authenticated()
             )

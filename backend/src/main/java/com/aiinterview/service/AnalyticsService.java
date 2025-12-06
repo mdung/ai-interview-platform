@@ -326,25 +326,26 @@ public class AnalyticsService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            final LocalDate currentDate = date; // Make effectively final for lambda
             long value = 0L;
             
             switch (metric.toLowerCase()) {
                 case "interviews":
                     value = sessionRepository.findAll().stream()
                         .filter(s -> s.getStartedAt() != null && 
-                            s.getStartedAt().toLocalDate().equals(date))
+                            s.getStartedAt().toLocalDate().equals(currentDate))
                         .count();
                     break;
                 case "candidates":
                     value = candidateRepository.findAll().stream()
                         .filter(c -> c.getCreatedAt() != null && 
-                            c.getCreatedAt().toLocalDate().equals(date))
+                            c.getCreatedAt().toLocalDate().equals(currentDate))
                         .count();
                     break;
                 case "completions":
                     value = sessionRepository.findAll().stream()
                         .filter(s -> s.getCompletedAt() != null && 
-                            s.getCompletedAt().toLocalDate().equals(date) &&
+                            s.getCompletedAt().toLocalDate().equals(currentDate) &&
                             s.getStatus() == InterviewSession.SessionStatus.COMPLETED)
                         .count();
                     break;
@@ -370,6 +371,38 @@ public class AnalyticsService {
             .metric(metric)
             .period(period)
             .dataPoints(dataPoints)
+            .build();
+    }
+    
+    public com.aiinterview.dto.JobStatisticsResponse getJobAnalytics() {
+        // Use existing jobRepository to calculate statistics
+        long totalJobs = jobRepository.count();
+        long activeJobs = jobRepository.findByActiveTrue().size();
+        
+        long totalCandidates = sessionRepository.findAll().stream()
+            .map(s -> s.getCandidate().getId())
+            .distinct()
+            .count();
+        
+        long totalInterviews = sessionRepository.count();
+        
+        Map<String, Long> jobsBySeniority = jobRepository.findByActiveTrue().stream()
+            .collect(Collectors.groupingBy(
+                job -> job.getSeniorityLevel().name(),
+                Collectors.counting()
+            ));
+        
+        double averageInterviewsPerJob = activeJobs > 0 
+            ? (double) totalInterviews / activeJobs 
+            : 0.0;
+        
+        return com.aiinterview.dto.JobStatisticsResponse.builder()
+            .totalJobs(totalJobs)
+            .activeJobs(activeJobs)
+            .totalCandidates(totalCandidates)
+            .totalInterviews(totalInterviews)
+            .jobsBySeniorityLevel(jobsBySeniority)
+            .averageInterviewsPerJob(averageInterviewsPerJob)
             .build();
     }
 }
