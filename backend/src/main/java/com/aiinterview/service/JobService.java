@@ -10,6 +10,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,7 @@ public class JobService {
     
     private final JobRepository jobRepository;
     private final InterviewSessionRepository sessionRepository;
+    private final com.aiinterview.repository.UserRepository userRepository;
     
     public List<Job> getAllActiveJobs() {
         return jobRepository.findByActiveTrue();
@@ -65,13 +69,41 @@ public class JobService {
     
     @Transactional
     public Job createJob(Job job) {
+        // Get current user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null && authentication.isAuthenticated()) {
+            String email = authentication.getName();
+            com.aiinterview.model.User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            job.setCreatedBy(user);
+        } else {
+            throw new RuntimeException("User not authenticated");
+        }
+        
         return jobRepository.save(job);
     }
     
     @Transactional
     public List<Job> bulkCreateJobs(List<Job> jobs) {
+        // Get current user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        com.aiinterview.model.User user = null;
+        if (authentication != null && authentication.isAuthenticated()) {
+            String email = authentication.getName();
+            user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        } else {
+            throw new RuntimeException("User not authenticated");
+        }
+        
+        final com.aiinterview.model.User finalUser = user;
         return jobs.stream()
-            .map(jobRepository::save)
+            .map(job -> {
+                job.setCreatedBy(finalUser);
+                return jobRepository.save(job);
+            })
             .collect(Collectors.toList());
     }
     

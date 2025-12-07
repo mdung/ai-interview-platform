@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { jobApi } from '../services/api'
+import { PageLayout } from '../components'
 import './JobForm.css'
 
 const JobForm = () => {
@@ -93,15 +94,16 @@ const JobForm = () => {
   }
 
   return (
-    <div className="job-form-container">
-      <div className="job-form-header">
-        <h1>{id ? 'Edit Job' : 'Create New Job'}</h1>
+    <PageLayout
+      title={id ? '✏️ Edit Job' : '➕ Create New Job'}
+      actions={
         <button className="btn btn-secondary" onClick={() => navigate(-1)}>
           Back
         </button>
-      </div>
-
-      {error && <div className="error-message">{error}</div>}
+      }
+    >
+      <div className="job-form-container">
+        {error && <div className="error-message">{error}</div>}
 
       <form onSubmit={handleSubmit} className="job-form">
         <div className="form-group">
@@ -225,7 +227,8 @@ const JobForm = () => {
           </button>
         </div>
       </form>
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 

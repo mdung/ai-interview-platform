@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { jobApi, candidateApi } from '../services/api'
-import { useToast } from '../components'
+import { useToast, PageLayout } from '../components'
 import './JobCandidates.css'
 
 interface Candidate {
@@ -84,21 +84,18 @@ const JobCandidates = () => {
   }
 
   if (loading && candidates.length === 0) {
-    return <div className="loading">Loading candidates...</div>
+    return (
+      <PageLayout title="Job Candidates">
+        <div className="loading">Loading candidates...</div>
+      </PageLayout>
+    )
   }
 
   return (
-    <div className="job-candidates-container">
-      <div className="job-candidates-header">
-        <div>
-          <h1>
-            Candidates for: {job?.title || 'Job'}
-          </h1>
-          <p className="subtitle">
-            {candidates.length} candidate(s) associated with this job
-          </p>
-        </div>
-        <div className="header-actions">
+    <PageLayout
+      title={`Candidates for: ${job?.title || 'Job'}`}
+      actions={
+        <>
           <button
             className="btn btn-primary"
             onClick={() => navigate(`/recruiter/candidates/new?jobId=${id}`)}
@@ -108,10 +105,15 @@ const JobCandidates = () => {
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
             Back
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="job-candidates-container">
+        <p className="subtitle">
+          {candidates.length} candidate(s) associated with this job
+        </p>
 
-      {error && <div className="error-message">{error}</div>}
+        {error && <div className="error-message">{error}</div>}
 
       <div className="job-candidates-content">
         <div className="candidates-list">
@@ -311,10 +313,12 @@ const JobCandidates = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 
 export default JobCandidates
+
 
 

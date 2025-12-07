@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { jobApi } from '../services/api'
-import { useToast } from '../components'
+import { useToast, PageLayout } from '../components'
 import './JobDetails.css'
 
 interface Job {
@@ -83,36 +83,31 @@ const JobDetails = () => {
   }
 
   if (loading) {
-    return <div className="loading">Loading job details...</div>
+    return (
+      <PageLayout title="Job Details">
+        <div className="loading">Loading job details...</div>
+      </PageLayout>
+    )
   }
 
   if (error || !job) {
     return (
-      <div className="job-details-container">
-        <div className="error-message">{error || 'Job not found'}</div>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
+      <PageLayout title="Job Details">
+        <div className="job-details-container">
+          <div className="error-message">{error || 'Job not found'}</div>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <div className="job-details-container">
-      <div className="job-details-header">
-        <div>
-          <h1>{job.title}</h1>
-          <div className="job-meta">
-            <span className={`status-badge ${job.active ? 'active' : 'inactive'}`}>
-              {job.active ? 'Active' : 'Inactive'}
-            </span>
-            <span className="meta-item">Seniority: {job.seniorityLevel}</span>
-            <span className="meta-item">
-              Created: {new Date(job.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-        <div className="header-actions">
+    <PageLayout
+      title={job.title}
+      actions={
+        <>
           <button
             className="btn btn-primary"
             onClick={() => navigate(`/recruiter/jobs/${job.id}/candidates`)}
@@ -137,8 +132,19 @@ const JobDetails = () => {
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
             Back
           </button>
+        </>
+      }
+    >
+      <div className="job-details-container">
+        <div className="job-header-info">
+          <span className={`status-badge ${job.active ? 'active' : 'inactive'}`}>
+            {job.active ? 'ACTIVE' : 'INACTIVE'}
+          </span>
+          <span className="meta-item">Seniority: <strong>{job.seniorityLevel}</strong></span>
+          <span className="meta-item">
+            Created: <strong>{new Date(job.createdAt).toLocaleDateString()}</strong>
+          </span>
         </div>
-      </div>
 
       <div className="job-details-content">
         <div className="details-section">
@@ -206,10 +212,12 @@ const JobDetails = () => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   )
 }
 
 export default JobDetails
+
 
 

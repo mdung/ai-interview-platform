@@ -1,28 +1,15 @@
 .job-form-container {
-  min-height: 100vh;
-  background-color: #f5f5f5;
-  padding: 20px;
-}
-
-.job-form-header {
-  max-width: 800px;
-  margin: 0 auto 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.job-form-header h1 {
-  margin: 0;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
 }
 
 .job-form {
-  max-width: 800px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--card-background, #fff);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color, #e0e0e0);
 }
 
 .form-group {
@@ -32,8 +19,39 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
-  font-weight: 500;
+  color: var(--text-primary, #1f2937);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-group .input,
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color, #e0e0e0);
+  border-radius: 8px;
+  font-size: 15px;
+  color: var(--text-primary, #1f2937);
+  background: var(--bg-primary, #fff);
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group .input:focus,
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary-color, #667eea);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
 }
 
 .skill-input-group {
@@ -46,29 +64,42 @@
   flex: 1;
 }
 
+.skill-input-group .btn {
+  white-space: nowrap;
+}
+
 .skills-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: 12px;
 }
 
 .skill-tag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background-color: #e3f2fd;
-  color: #1976d2;
-  padding: 6px 12px;
-  border-radius: 16px;
+  gap: 8px;
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--primary-color, #667eea);
+  padding: 8px 14px;
+  border-radius: 20px;
   font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  transition: all 0.2s;
+}
+
+.skill-tag:hover {
+  background: rgba(102, 126, 234, 0.15);
+  transform: translateY(-1px);
 }
 
 .skill-remove {
   background: none;
   border: none;
-  color: #1976d2;
+  color: var(--primary-color, #667eea);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1;
   padding: 0;
   width: 20px;
@@ -76,15 +107,64 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
 }
 
 .skill-remove:hover {
-  color: #d32f2f;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
 }
 
+.error-message {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border-left: 4px solid #dc2626;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-message::before {
+  content: '❌';
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .job-form-container {
+    padding: 0 16px;
+  }
+
+  .job-form {
+    padding: 24px 20px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+  }
+
+  .skill-input-group {
+    flex-direction: column;
+  }
+
+  .skill-input-group .btn {
+    width: 100%;
+  }
+}

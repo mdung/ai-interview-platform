@@ -337,3 +337,133 @@
     width: 100%;
   }
 }
+
+/* Table Styles */
+.jobs-table-container {
+  background: var(--card-background, #fff);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 20px;
+}
+
+.jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.jobs-table thead {
+  background: var(--bg-secondary, #f8f9fa);
+  border-bottom: 2px solid var(--border-color, #e0e0e0);
+}
+
+.jobs-table th {
+  padding: 16px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary, #1f2937);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.jobs-table th:first-child {
+  width: 50px;
+  text-align: center;
+}
+
+.jobs-table tbody tr {
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  transition: background-color 0.2s;
+}
+
+.jobs-table tbody tr:hover {
+  background: var(--bg-hover, #f8f9fa);
+}
+
+.jobs-table td {
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text-primary, #374151);
+}
+
+.jobs-table td:first-child {
+  text-align: center;
+}
+
+.jobs-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary-color, #667eea);
+}
+
+.seniority-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.seniority-junior {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.seniority-mid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.seniority-senior {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.seniority-lead {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: var(--card-background, #fff);
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.pagination span {
+  color: var(--text-secondary, #6b7280);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .jobs-table-container {
+    overflow-x: auto;
+  }
+
+  .jobs-table {
+    min-width: 800px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .action-buttons .btn {
+    width: 100%;
+  }
+}

@@ -11,6 +11,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ public class InterviewTemplateService {
     
     private final InterviewTemplateRepository templateRepository;
     private final InterviewSessionRepository sessionRepository;
+    private final com.aiinterview.repository.UserRepository userRepository;
     
     public List<InterviewTemplate> getAllActiveTemplates() {
         return templateRepository.findByActiveTrue();
@@ -41,6 +44,18 @@ public class InterviewTemplateService {
     
     @Transactional
     public InterviewTemplate createTemplate(InterviewTemplate template) {
+        // Get current user from security context
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication != null && authentication.isAuthenticated()) {
+            String email = authentication.getName();
+            com.aiinterview.model.User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            template.setCreatedBy(user);
+        } else {
+            throw new RuntimeException("User not authenticated");
+        }
+        
         return templateRepository.save(template);
     }
     

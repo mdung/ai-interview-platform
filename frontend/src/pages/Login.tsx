@@ -45,42 +45,48 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>AI Interview Platform</h1>
-        <h2>Login</h2>
-        <form onSubmit={handleSubmit}>
+        <div className="login-header">
+          <div className="login-logo">🎯</div>
+          <h1 className="login-title">AI Interview Platform</h1>
+          <p className="login-subtitle">Sign in to your account</p>
+        </div>
+        <form onSubmit={handleSubmit} className="login-form">
+          {error && <div className="error-message">{error}</div>}
           <div className="form-group">
-            <label>Email</label>
+            <label className="form-label">Email</label>
             <input
               type="email"
-              className="input"
+              className="form-input"
+              placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
           <div className="form-group">
-            <label>Password</label>
+            <label className="form-label">Password</label>
             <input
               type="password"
-              className="input"
+              className="form-input"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          {error && <div className="error-message">{error}</div>}
-          <button type="submit" className="btn btn-primary">
-            Login
+          <button type="submit" className="login-button">
+            Sign In
           </button>
-          <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <Link to="/forgot-password" style={{ color: '#007bff', textDecoration: 'none', fontSize: '14px' }}>
+          <div className="login-footer">
+            <Link to="/forgot-password" className="login-link">
               Forgot Password?
             </Link>
-          </div>
-          <div style={{ marginTop: '12px', textAlign: 'center' }}>
-            <Link to="/register" style={{ color: '#007bff', textDecoration: 'none' }}>
-              Don't have an account? Register
-            </Link>
+            <div style={{ marginTop: '12px' }}>
+              <span style={{ color: '#6b7280', marginRight: '8px' }}>Don't have an account?</span>
+              <Link to="/register" className="login-link">
+                Register
+              </Link>
+            </div>
           </div>
         </form>
       </div>
