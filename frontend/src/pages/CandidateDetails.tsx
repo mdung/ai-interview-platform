@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { candidateApi, interviewApi } from '../services/api'
-import { useToast } from '../components'
+import { candidateApi } from '../services/api'
+import { useToast, PageLayout } from '../components'
 import './CandidateDetails.css'
 
 interface Candidate {
@@ -120,30 +120,66 @@ const CandidateDetails = () => {
   }
 
   if (loading) {
-    return <div className="loading">Loading candidate details...</div>
+    return (
+      <PageLayout title="Candidate Details">
+        <div className="loading">Loading candidate details...</div>
+      </PageLayout>
+    )
   }
 
   if (error || !candidate) {
     return (
-      <div className="candidate-details-container">
-        <div className="error-message">{error || 'Candidate not found'}</div>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
+      <PageLayout title="Candidate Details">
+        <div className="candidate-details-container">
+          <div className="error-message">{error || 'Candidate not found'}</div>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <div className="candidate-details-container">
-      <div className="candidate-details-header">
-        <div>
-          <h1>
-            {candidate.firstName} {candidate.lastName}
-          </h1>
-          <p className="candidate-email">{candidate.email}</p>
-        </div>
-        <div className="header-actions">
+    <PageLayout
+      title={`${candidate.firstName} ${candidate.lastName}`}
+      actions={
+        <>
+          <button
+            className="btn btn-primary"
+            onClick={handleCreateInterview}
+          >
+            Create Interview
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleViewResume}
+            disabled={!candidate.resumeUrl}
+          >
+            View Resume
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleDownloadResume}
+            disabled={!candidate.resumeUrl}
+          >
+            Download Resume
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate(`/recruiter/candidates/${id}/edit`)}
+          >
+            Edit
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </>
+      }
+    >
+      <div className="candidate-details-container">
+        <p className="candidate-email">{candidate.email}</p>
+        <div className="header-actions" style={{ display: 'none' }}>
           <button
             className="btn btn-primary"
             onClick={handleCreateInterview}
@@ -365,7 +401,7 @@ const CandidateDetails = () => {
           </div>
         </div>
       )}
-    </div>
+    </PageLayout>
   )
 }
 
