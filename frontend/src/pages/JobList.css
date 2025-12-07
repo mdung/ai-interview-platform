@@ -340,11 +340,12 @@
 
 /* Table Styles */
 .jobs-table-container {
-  background: var(--card-background, #fff);
+  background: #ffffff;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-top: 20px;
+  border: 1px solid #e0e0e0;
 }
 
 .jobs-table {
@@ -353,8 +354,12 @@
 }
 
 .jobs-table thead {
-  background: var(--bg-secondary, #f8f9fa);
-  border-bottom: 2px solid var(--border-color, #e0e0e0);
+  background: #2d3748;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.jobs-table thead th {
+  color: #ffffff;
 }
 
 .jobs-table th {
@@ -362,7 +367,7 @@
   text-align: left;
   font-weight: 700;
   font-size: 14px;
-  color: var(--text-primary, #1f2937);
+  color: #1f2937;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
@@ -374,18 +379,19 @@
 }
 
 .jobs-table tbody tr {
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  border-bottom: 1px solid #e0e0e0;
   transition: background-color 0.2s;
+  background: #ffffff;
 }
 
 .jobs-table tbody tr:hover {
-  background: var(--bg-hover, #f8f9fa);
+  background: #f8f9fa;
 }
 
 .jobs-table td {
   padding: 16px;
   font-size: 14px;
-  color: var(--text-primary, #374151);
+  color: #374151;
 }
 
 .jobs-table td:first-child {

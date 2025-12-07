@@ -68,13 +68,18 @@ public class InterviewSessionService {
         
         session = sessionRepository.save(session);
         
-        // Store session state in Redis
-        Map<String, Object> sessionState = new HashMap<>();
-        sessionState.put("sessionId", sessionId);
-        sessionState.put("status", "PENDING");
-        sessionState.put("currentQuestion", null);
-        sessionState.put("conversationHistory", new java.util.ArrayList<>());
-        redisTemplate.opsForValue().set("session:" + sessionId, sessionState);
+        // Store session state in Redis (optional - don't fail if Redis is unavailable)
+        try {
+            Map<String, Object> sessionState = new HashMap<>();
+            sessionState.put("sessionId", sessionId);
+            sessionState.put("status", "PENDING");
+            sessionState.put("currentQuestion", null);
+            sessionState.put("conversationHistory", new java.util.ArrayList<>());
+            redisTemplate.opsForValue().set("session:" + sessionId, sessionState);
+        } catch (Exception e) {
+            // Log but don't fail if Redis is unavailable
+            System.err.println("Failed to store session in Redis: " + e.getMessage());
+        }
         
         return mapToResponse(session);
     }

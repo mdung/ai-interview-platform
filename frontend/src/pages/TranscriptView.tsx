@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { interviewApi } from '../services/api'
+import { PageLayout } from '../components'
 import './TranscriptView.css'
 
 interface Turn {
@@ -146,31 +147,77 @@ const TranscriptView = () => {
   }
 
   if (loading) {
-    return <div className="loading">Loading transcript...</div>
+    return (
+      <PageLayout title="Interview Transcript">
+        <div className="loading">Loading transcript...</div>
+      </PageLayout>
+    )
   }
 
   if (error || !transcript) {
     return (
-      <div className="transcript-container">
-        <div className="error-message">{error || 'Transcript not found'}</div>
-        <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-          Back
-        </button>
-      </div>
+      <PageLayout title="Interview Transcript">
+        <div className="transcript-container">
+          <div className="error-message">{error || 'Transcript not found'}</div>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </div>
+      </PageLayout>
     )
   }
 
   return (
-    <div className="transcript-container">
-      <div className="transcript-header">
-        <div>
-          <h1>Interview Transcript</h1>
-          <p className="session-info">
-            Candidate: {transcript.candidateName} | Template: {transcript.templateName} | 
-            Status: {transcript.status}
-          </p>
-        </div>
-        <div className="header-actions">
+    <PageLayout
+      title="Interview Transcript"
+      actions={
+        <>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => navigate(`/recruiter/sessions/${sessionId}/replay`)}
+          >
+            Replay Interview
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => navigate(`/recruiter/sessions/${sessionId}/analytics`)}
+          >
+            View Analytics
+          </button>
+          <button className="btn btn-primary" onClick={() => handleShare()}>
+            Share Results
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={async () => {
+              try {
+                await interviewApi.sendInterviewLink(sessionId!)
+                alert('Interview link sent successfully')
+              } catch (err) {
+                alert('Failed to send interview link')
+              }
+            }}
+          >
+            Send Interview Link
+          </button>
+          <button className="btn btn-primary" onClick={() => handleExport('pdf')}>
+            Export PDF
+          </button>
+          <button className="btn btn-primary" onClick={() => handleExport('csv')}>
+            Export CSV
+          </button>
+          <button className="btn btn-secondary" onClick={() => navigate(-1)}>
+            Back
+          </button>
+        </>
+      }
+    >
+      <div className="transcript-container">
+        <p className="session-info">
+          Candidate: <strong>{transcript.candidateName}</strong> | Template: <strong>{transcript.templateName}</strong> | 
+          Status: <strong>{transcript.status}</strong>
+        </p>
+        <div className="header-actions" style={{ display: 'none' }}>
           <button 
             className="btn btn-primary" 
             onClick={() => navigate(`/recruiter/sessions/${sessionId}/replay`)}
@@ -370,7 +417,7 @@ const TranscriptView = () => {
           )}
         </div>
       </div>
-    </div>
+    </PageLayout>
   )
 }
 
